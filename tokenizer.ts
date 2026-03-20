@@ -138,15 +138,13 @@ function buildWordToken(scanner: Scanner): Token {
 
     case "true":
     case "false":
-      return { type: "TOKEN_BOOL", loc: scanner.loc() };
+      return { type: "TOKEN_BOOL", val, loc: scanner.loc() };
 
     case "list":
     case "dict":
     case "func":
-
     case "and":
     case "or":
-
     case "var":
     case "if":
     case "for":
@@ -179,12 +177,17 @@ function buildSymbolToken(scanner: Scanner): Token {
       break;
 
     case "(":
-      if (!isBlank(scanner.peak(-1) ?? "")) {
+      {
+        const peak = scanner.peak(-1) ?? "";
+
+        if (isLetter(peak) || isDigit(peak) || peak === '"' || peak === ")" || peak === "}" || peak === ".") {
+          scanner.next();
+          return { type: "TOKEN_STICKY_PAREN_L", loc: scanner.loc() };
+        }
+
+        val = scanner.cur()!;
         scanner.next();
-        return { type: "TOKEN_STICKY_PAREN_L", loc: scanner.loc() };
       }
-      val = scanner.cur()!;
-      scanner.next();
       break;
 
     case "!":
@@ -228,7 +231,10 @@ function buildSymbolToken(scanner: Scanner): Token {
       break;
 
     default:
-      throw createError(`Symbolic literal ${current} is unknown`, scanner.loc());
+      throw createError(
+        `Symbolic literal ${current} is unknown`,
+        scanner.loc(),
+      );
   }
 
   return { type: "TOKEN_SYMBOL", val, loc: scanner.loc() };
@@ -241,24 +247,24 @@ export type TokenBase<T extends string> = {
 
 export type WithVal = { val: string };
 
-export type NullToken = TokenBase<"TOKEN_NULL">
-export type BoolToken = TokenBase<"TOKEN_BOOL">
-export type StickyParenLToken = TokenBase<"TOKEN_STICKY_PAREN_L">
-export type SymbolToken = TokenBase<"TOKEN_SYMBOL"> & WithVal
-export type KeywordToken = TokenBase<"TOKEN_KEYWORD"> & WithVal
-export type IdToken = TokenBase<"TOKEN_ID"> & WithVal
-export type StringToken = TokenBase<"TOKEN_STRING"> & WithVal
-export type NumberToken = TokenBase<"TOKEN_NUMBER"> & WithVal
+export type NullToken = TokenBase<"TOKEN_NULL">;
+export type BoolToken = TokenBase<"TOKEN_BOOL"> & WithVal;
+export type StickyParenLToken = TokenBase<"TOKEN_STICKY_PAREN_L">;
+export type SymbolToken = TokenBase<"TOKEN_SYMBOL"> & WithVal;
+export type KeywordToken = TokenBase<"TOKEN_KEYWORD"> & WithVal;
+export type IdToken = TokenBase<"TOKEN_ID"> & WithVal;
+export type StringToken = TokenBase<"TOKEN_STRING"> & WithVal;
+export type NumberToken = TokenBase<"TOKEN_NUMBER"> & WithVal;
 
 export type Token =
-  NullToken |
-  BoolToken |
-  StickyParenLToken |
-  SymbolToken |
-  KeywordToken |
-  IdToken |
-  StringToken |
-  NumberToken
+  | NullToken
+  | BoolToken
+  | StickyParenLToken
+  | SymbolToken
+  | KeywordToken
+  | IdToken
+  | StringToken
+  | NumberToken;
 
 export type Tokenizer = Iterator<Token>;
 
@@ -266,30 +272,30 @@ export function tokenize(scanner: Scanner): Tokenizer {
   const tokens: Token[] = [];
 
   while (scanner.cur() !== null) {
-    skipBlanks(scanner)
+    skipBlanks(scanner);
 
     const cur = scanner.cur();
 
     if (cur === null) {
-        break;
+      break;
     }
 
     if (cur === '"') {
-        tokens.push(buildStringToken(scanner))
-        continue;
+      tokens.push(buildStringToken(scanner));
+      continue;
     }
 
     if (isDigit(cur ?? "")) {
-        tokens.push(buildNumberToken(scanner))
-        continue;
+      tokens.push(buildNumberToken(scanner));
+      continue;
     }
 
     if (isLetter(cur ?? "")) {
-        tokens.push(buildWordToken(scanner))
-        continue;
+      tokens.push(buildWordToken(scanner));
+      continue;
     }
 
-    tokens.push(buildSymbolToken(scanner))
+    tokens.push(buildSymbolToken(scanner));
   }
 
   return createIterator(tokens);

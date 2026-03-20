@@ -73,7 +73,7 @@ function compilePrimary(node: PrimaryNode): string {
         case "TOKEN_NULL":
           return "null"
         case "TOKEN_BOOL":
-          return "false"
+          return node.token.val
       }
       break;
     case "COMPOSITE":

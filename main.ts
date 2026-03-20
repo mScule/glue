@@ -5,22 +5,14 @@ import { compileToJs } from "./compileToJs.ts";
 
 if (import.meta.main) {
   const chars = scan(`
-    var create_user = func (name age) {
-      return dict {
-        name = name or ""
-        age  = age or ""
-      }
+    var humans = list {
+      dict { name = "Mike" age = 12 }
+      dict { name = "Jack" age = 18 }
+      dict { name = "Mark" age = 17 }
+      dict { name = "Root" age = 21 }
     }
 
-    var users = list {
-      create_user("Mike" 20)
-      create_user("Jack" 25)
-      create_user("Mark" 30)
-    }
-
-    for user in users {
-      console.log("Name: " user.name " Age: " user.age)
-    }
+    console.log(humans.(0).name)
   `)
   const tokens = tokenize(chars)
   const ast = parse(tokens)

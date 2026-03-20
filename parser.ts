@@ -279,6 +279,7 @@ function parseUnary(tokenizer: Tokenizer): UnaryNode {
     const cur = tokenizer.cur()
 
     if (cur && cur.type === "TOKEN_SYMBOL" && (cur.val === "!" || cur.val === "-")) {
+        tokenizer.next()
         return { type: "NODE_UNARY", opr: cur, next: parseUnary(tokenizer) }
     }
 
