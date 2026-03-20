@@ -3,20 +3,35 @@ import { scan } from "./scanner.ts";
 import { tokenize } from "./tokenizer.ts";
 import { compileToJs } from "./compileToJs.ts";
 
+function getArg(args: string[], key: string) {
+  const index = args.indexOf(key);
+
+  if (index === -1 || index + 1 >= args.length) {
+    return null;
+  }
+
+  return args[index + 1];
+}
+
 if (import.meta.main) {
-  const chars = scan(`
-    var humans = list {
-      dict { name = "Mike" age = 12 }
-      dict { name = "Jack" age = 18 }
-      dict { name = "Mark" age = 17 }
-      dict { name = "Root" age = 21 }
-    }
+  const inputPath = getArg(Deno.args, "-f");
+  const outputPath = getArg(Deno.args, "-o");
 
-    console.log(humans.(0).name)
-  `)
-  const tokens = tokenize(chars)
-  const ast = parse(tokens)
-  const js = compileToJs(ast)
+  if (!inputPath) {
+    console.error("Usage: -f <input> [-o <output>]");
+    Deno.exit(1);
+  }
 
-  eval(js)
+  const source = await Deno.readTextFile(inputPath);
+
+  const chars = scan(source);
+  const tokens = tokenize(chars);
+  const ast = parse(tokens);
+  const js = compileToJs(ast);
+
+  if (outputPath) {
+    await Deno.writeTextFile(outputPath, js);
+  } else {
+    eval(js);
+  }
 }

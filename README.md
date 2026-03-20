@@ -44,29 +44,16 @@ stmt = assig | decl | if | for | while | break | return
 
 ## Example
 
-Input:
+You can run an example program with `deno run ./main.ts -f ./examples/bouncer.glue`
+
+Example output if evaluated:
 ```
-var create_user = func (name age) {
-  return dict {
-    name = name or ""
-    age  = age or ""
-  }
-}
-
-var users = list {
-  create_user("Mike" 20)
-  create_user("Jack" 25)
-  create_user("Mark" 30)
-}
-
-for user in users {
-  console.log("Name: " user.name " Age: " user.age)
-}
+Baby has to wait for 18
+Mike has to wait for 3
+Jack is old enough. Welcome!
+Bill is old enough. Welcome!
+Granpa is old enough. Welcome!
 ```
 
-Output:
-```js
-let create_user = function(name,age){return {name:name  || "" ,age:age  || "" } } ;let users = [create_user ("Mike" ,20 ),create_user ("Jack" ,25 ),create_user ("Mark" ,30 )] ;for (let user of users ){console .log("Name: " ,user .name," Age: " ,user .age)}
-```
-
-You can run the example with Deno, `deno run ./main.ts`
+- Example input file can be found [./examples/bouncer.glue](./examples/bouncer.glue)
+- Example output file can be found in [./examples/bouncer.js](./examples/bouncer.js)

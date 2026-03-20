@@ -250,6 +250,8 @@ function parsePrimary(tokenizer: Tokenizer): PrimaryNode {
             throw createError("Func call expression has to be closed with ) got " + cur, cur?.loc)
         }
 
+        tokenizer.next()
+
         return { type: "NODE_PRIMARY", variant: "COMPOSITE", node: expr }
     }
 
