@@ -1,4 +1,4 @@
-import { Nullable } from "./types/nullable.ts";
+import { Nullable } from "./nullable.ts";
 
 export type Iterator<T> = {
   cur: () => Nullable<T>;

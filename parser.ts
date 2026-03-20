@@ -1,6 +1,6 @@
 import { createError } from "./error.ts";
 import { Tokenizer, BoolToken, IdToken, NullToken, NumberToken, StringToken, SymbolToken, Token, KeywordToken } from "./tokenizer.ts";
-import { Nullable } from "./types/nullable.ts";
+import { Nullable } from "./nullable.ts";
 
 type AstNode<T extends string> = { type: T }
 
