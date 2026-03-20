@@ -5,7 +5,7 @@ export type Scanner = Iterator<string> & {
   loc: () => Location;
 };
 
-export function createScanner(from: string): Scanner {
+export function scan(from: string): Scanner {
   const loc: Location = { ln: 1, col: 1 };
   const iterator = createIterator(from as unknown as string[]);
 

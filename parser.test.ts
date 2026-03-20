@@ -1,9 +1,9 @@
-import { parseAst } from "./parser.ts";
-import { createScanner } from "./scanner.ts";
-import { createTokenizer } from "./tokenizer.ts";
+import { scan } from "./scanner.ts";
+import { tokenize } from "./tokenizer.ts";
+import { parse } from "./parser.ts";
 
 Deno.test(function tokenizerTest() {
-  const scanner = createScanner(`
+  const scanner = scan(`
     var create_user = func (name age) {
       return dict {
         name = name or ""
@@ -22,8 +22,8 @@ Deno.test(function tokenizerTest() {
     }
   `)
 
-  const tokenizer = createTokenizer(scanner)
-  const ast = parseAst(tokenizer)
+  const tokenizer = tokenize(scanner)
+  const ast = parse(tokenizer)
 
   console.log(JSON.stringify(ast))
 });

@@ -4,39 +4,41 @@ import { Nullable } from "./types/nullable.ts";
 
 type AstNode<T extends string> = { type: T }
 
-type ListNode = AstNode<"NODE_LIST"> & { items: ExprNode[] }
-type DictNode = AstNode<"NODE_DICT"> & { fields: { key: NumberToken | StringToken | IdToken, value: ExprNode }[] }
-type FuncNode = AstNode<"NODE_FUNC"> & { params: IdToken[], stmts: StmtNode[] }
+export type ListNode = AstNode<"NODE_LIST"> & { items: ExprNode[] }
+export type DictNode = AstNode<"NODE_DICT"> & { fields: { key: NumberToken | StringToken | IdToken, value: ExprNode }[] }
+export type FuncNode = AstNode<"NODE_FUNC"> & { params: IdToken[], stmts: StmtNode[] }
 
-type FuncCallNode  = AstNode<"NODE_FUNC_CALL">  & { args: ExprNode[] }
-type FieldCallNode = AstNode<"NODE_FIELD_CALL"> & { field: NumberToken | StringToken | IdToken } | { expr: ExprNode }
+export type FuncCallNode  = AstNode<"NODE_FUNC_CALL">  & { args: ExprNode[] }
+export type FieldCallNode =
+    | AstNode<"NODE_FIELD_CALL"> & { variant: "PRIMITIVE", field: NumberToken | StringToken | IdToken }
+    | AstNode<"NODE_FIELD_CALL"> & { variant: "COMPOSITE", expr: ExprNode }
 
-type PrimaryNode =
+export type PrimaryNode =
     | AstNode<"NODE_PRIMARY"> & { variant: "PRIMITIVE", token: NullToken | BoolToken | NumberToken | StringToken | IdToken }
     | AstNode<"NODE_PRIMARY"> & { variant: "COMPOSITE", node: ListNode | DictNode | FuncNode | ExprNode }
 
-type CallNode    = AstNode<"NODE_CALL">    & { primary: PrimaryNode, calls: (FuncCallNode | FieldCallNode)[] } 
-type UnaryNode   = AstNode<"NODE_UNARY">   & { next: CallNode } | { opr: SymbolToken, next: UnaryNode }
+export type CallNode    = AstNode<"NODE_CALL">    & { primary: PrimaryNode, calls: (FuncCallNode | FieldCallNode)[] } 
+export type UnaryNode   = AstNode<"NODE_UNARY">   & { next: CallNode } | { opr: SymbolToken, next: UnaryNode }
 
-type FactorNode = AstNode<"NODE_FACTOR"> & { left: UnaryNode }  | { opr: SymbolToken, left: UnaryNode,  right: FactorNode }
-type TermNode   = AstNode<"NODE_TERM">   & { left: FactorNode } | { opr: SymbolToken, left: FactorNode, right: TermNode }
-type CompNode   = AstNode<"NODE_COMP">   & { left: TermNode }   | { opr: SymbolToken, left: TermNode,   right: CompNode }
-type EqNode     = AstNode<"NODE_EQ">     & { left: CompNode }   | { opr: SymbolToken, left: CompNode,   right: EqNode }
-type AndNode    = AstNode<"NODE_AND">    & { left: EqNode,  right?: AndNode }
-type OrNode     = AstNode<"NODE_OR">     & { left: AndNode, right?: OrNode }
-type ExprNode   = AstNode<"NODE_EXPR">   & { node: OrNode }
+export type FactorNode = AstNode<"NODE_FACTOR"> & { left: UnaryNode }  | { opr: SymbolToken, left: UnaryNode,  right: FactorNode }
+export type TermNode   = AstNode<"NODE_TERM">   & { left: FactorNode } | { opr: SymbolToken, left: FactorNode, right: TermNode }
+export type CompNode   = AstNode<"NODE_COMP">   & { left: TermNode }   | { opr: SymbolToken, left: TermNode,   right: CompNode }
+export type EqNode     = AstNode<"NODE_EQ">     & { left: CompNode }   | { opr: SymbolToken, left: CompNode,   right: EqNode }
+export type AndNode    = AstNode<"NODE_AND">    & { left: EqNode,  right?: AndNode }
+export type OrNode     = AstNode<"NODE_OR">     & { left: AndNode, right?: OrNode }
+export type ExprNode   = AstNode<"NODE_EXPR">   & { node: OrNode }
 
-type AssigNode  = AstNode<"NODE_ASSIG"> & { left: ExprNode, right?: ExprNode }
-type DeclNode   = AstNode<"NODE_DECL">  & { id:   IdToken,  value:  ExprNode }
-type IfNode     = AstNode<"NODE_IF">    & { cond: ExprNode, stmts:  StmtNode[] }
-type ForNode    = AstNode<"NODE_FOR">   & { item: IdToken,  source: ExprNode, stmts: StmtNode[] }
-type WhileNode  = AstNode<"NODE_WHILE"> & { cond: ExprNode, stmts:  StmtNode[] }
-type BreakNode  = AstNode<"NODE_BREAK">
-type ReturnNode = AstNode<"NODE_RETURN"> & { value: ExprNode }
+export type AssigNode  = AstNode<"NODE_ASSIG"> & { left: ExprNode, right?: ExprNode }
+export type DeclNode   = AstNode<"NODE_DECL">  & { id:   IdToken,  value:  ExprNode }
+export type IfNode     = AstNode<"NODE_IF">    & { cond: ExprNode, stmts:  StmtNode[] }
+export type ForNode    = AstNode<"NODE_FOR">   & { item: IdToken,  source: ExprNode, stmts: StmtNode[] }
+export type WhileNode  = AstNode<"NODE_WHILE"> & { cond: ExprNode, stmts:  StmtNode[] }
+export type BreakNode  = AstNode<"NODE_BREAK">
+export type ReturnNode = AstNode<"NODE_RETURN"> & { value: ExprNode }
 
-type StmtNode = AstNode<"NODE_STMT"> & { node: AssigNode | DeclNode | IfNode | ForNode | WhileNode | BreakNode | ReturnNode }
+export type StmtNode = AstNode<"NODE_STMT"> & { node: AssigNode | DeclNode | IfNode | ForNode | WhileNode | BreakNode | ReturnNode }
 
-type AstRoot = AstNode<"NODE_ROOT"> & { stmts: StmtNode[] }
+export type AstRoot = AstNode<"NODE_ROOT"> & { stmts: StmtNode[] }
 
 function assertToken(candidate: Nullable<Token>): Token {
     if (!candidate) {
@@ -201,7 +203,7 @@ function parseFieldCall(tokenizer: Tokenizer): FieldCallNode {
 
     if (cur && (cur.type === "TOKEN_NUMBER" || cur.type === "TOKEN_STRING" || cur.type === "TOKEN_ID")) {
         tokenizer.next() // eat field
-        return { type: "NODE_FIELD_CALL", field: cur }
+        return { type: "NODE_FIELD_CALL", variant: "PRIMITIVE", field: cur }
     }
 
     if (cur && cur.type === "TOKEN_STICKY_PAREN_L") {
@@ -212,7 +214,7 @@ function parseFieldCall(tokenizer: Tokenizer): FieldCallNode {
             throw createError("Field call expression has to be closed with ) got " + cur, cur?.loc)
         }
         tokenizer.next() // eat )
-        return { type: "NODE_FIELD_CALL", expr: expr }
+        return { type: "NODE_FIELD_CALL", variant: "COMPOSITE", expr: expr }
     }
 
     throw createError("Field accessor has to be either number, string, id or expression wrapped in sticky opening parenthese and closing parenthese")
@@ -496,7 +498,7 @@ function parseStmt(tokenizer: Tokenizer): StmtNode {
     return { type: "NODE_STMT", node: parseAssig(tokenizer) }
 }
 
-export function parseAst(tokenizer: Tokenizer): AstRoot {
+export function parse(tokenizer: Tokenizer): AstRoot {
     const stmts: StmtNode[] = []
 
     while(tokenizer.cur()) {

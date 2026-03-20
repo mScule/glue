@@ -262,7 +262,7 @@ export type Token =
 
 export type Tokenizer = Iterator<Token>;
 
-export function createTokenizer(scanner: Scanner): Tokenizer {
+export function tokenize(scanner: Scanner): Tokenizer {
   const tokens: Token[] = [];
 
   while (scanner.cur() !== null) {
