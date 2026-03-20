@@ -1,0 +1,27 @@
+list = "list"  "{" or* "}"
+dict = "dict" "{" ((NUMBER | STRING | ID) "=" or)* "}"
+func = "func" "(" ID* ")" "{" stmt* "}"
+
+primary = "null" | BOOL | NUMBER | STRING | ID | list | dict | func | "(" expr ")"
+call    = primary (STICKY_PAREN_L args? PAREN_R | "." ID)*
+unary   = ("!" | "-") unary | call
+
+factor = unary  (("*" | "/" | "%") unary)*
+term   = factor (("+" | "-") factor)*
+comp   = term   ((">" | "<" | ">=" | "<=") term)*
+eq     = comp   (("!=" | "==") comp)*
+and    = eq     (("and") eq)*
+or     = and    (("or") and)*
+
+assig = call "=" or
+
+expr = assig
+
+decl   = "var" ID "=" expr
+if     = "if" expr "{" stmt* "}"
+for    = "for" ID "in" expr "{" stmt* "}"
+while  = "while" expr "{" stmt* "}"
+break  = "break"
+return = "return" expr
+
+stmt = expr | decl | if | for | while | break | return
