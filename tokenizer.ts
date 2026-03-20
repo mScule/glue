@@ -15,6 +15,18 @@ function isDigit(char: string) {
   return char.match(/[0-9]/);
 }
 
+function skipComment(scanner: Scanner) {
+  while (true) {
+    const cur = scanner.cur();
+
+    if (!cur || cur === "\n") {
+      break;
+    }
+
+    scanner.next();
+  }
+}
+
 function skipBlanks(scanner: Scanner) {
   while (true) {
     const cur = scanner.cur();
@@ -180,7 +192,10 @@ function buildSymbolToken(scanner: Scanner): Token {
       {
         const peak = scanner.peak(-1) ?? "";
 
-        if (isLetter(peak) || isDigit(peak) || peak === '"' || peak === ")" || peak === "}" || peak === ".") {
+        if (
+          isLetter(peak) || isDigit(peak) || peak === '"' || peak === ")" ||
+          peak === "}" || peak === "."
+        ) {
           scanner.next();
           return { type: "TOKEN_STICKY_PAREN_L", loc: scanner.loc() };
         }
@@ -278,6 +293,11 @@ export function tokenize(scanner: Scanner): Tokenizer {
 
     if (cur === null) {
       break;
+    }
+
+    if (cur === "#") {
+      skipComment(scanner);
+      continue;
     }
 
     if (cur === '"') {
