@@ -19,7 +19,7 @@ if (import.meta.main) {
     }
 
     for user in users {
-      print("Name: " user.name " Age: " user.age)
+      console.log("Name: " user.name " Age: " user.age)
     }
   `)
   const tokens = tokenize(chars)
