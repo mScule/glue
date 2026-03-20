@@ -57,7 +57,7 @@ function buildNumberToken(scanner: Scanner): Token {
     }
   }
 
-  return { type: "NUMBER", val, loc: scanner.loc() };
+  return { type: "TOKEN_NUMBER", val, loc: scanner.loc() };
 }
 
 function buildStringToken(scanner: Scanner): Token {
@@ -116,7 +116,7 @@ function buildStringToken(scanner: Scanner): Token {
     val += current;
   }
 
-  return { type: "STRING", val, loc: scanner.loc() };
+  return { type: "TOKEN_STRING", val, loc: scanner.loc() };
 }
 
 function buildWordToken(scanner: Scanner): Token {
@@ -134,11 +134,11 @@ function buildWordToken(scanner: Scanner): Token {
 
   switch (val) {
     case "null":
-      return { type: "NULL", loc: scanner.loc() };
+      return { type: "TOKEN_NULL", loc: scanner.loc() };
 
     case "true":
     case "false":
-      return { type: "BOOL", loc: scanner.loc() };
+      return { type: "TOKEN_BOOL", loc: scanner.loc() };
 
     case "list":
     case "dict":
@@ -154,9 +154,9 @@ function buildWordToken(scanner: Scanner): Token {
     case "while":
     case "break":
     case "return":
-      return { type: "KEYWORD", val, loc: scanner.loc() };
+      return { type: "TOKEN_KEYWORD", val, loc: scanner.loc() };
     default:
-      return { type: "ID", val, loc: scanner.loc() };
+      return { type: "TOKEN_ID", val, loc: scanner.loc() };
   }
 }
 
@@ -181,7 +181,7 @@ function buildSymbolToken(scanner: Scanner): Token {
     case "(":
       if (!isBlank(scanner.peak(-1) ?? "")) {
         scanner.next();
-        return { type: "STICKY_PAREN_L", loc: scanner.loc() };
+        return { type: "TOKEN_STICKY_PAREN_L", loc: scanner.loc() };
       }
       val = scanner.cur()!;
       scanner.next();
@@ -231,7 +231,7 @@ function buildSymbolToken(scanner: Scanner): Token {
       throw createError(`Symbolic literal ${current} is unknown`, scanner.loc());
   }
 
-  return { type: "SYMBOL", val, loc: scanner.loc() };
+  return { type: "TOKEN_SYMBOL", val, loc: scanner.loc() };
 }
 
 export type TokenBase<T extends string> = {
@@ -241,9 +241,24 @@ export type TokenBase<T extends string> = {
 
 export type WithVal = { val: string };
 
+export type NullToken = TokenBase<"TOKEN_NULL">
+export type BoolToken = TokenBase<"TOKEN_BOOL">
+export type StickyParenLToken = TokenBase<"TOKEN_STICKY_PAREN_L">
+export type SymbolToken = TokenBase<"TOKEN_SYMBOL"> & WithVal
+export type KeywordToken = TokenBase<"TOKEN_KEYWORD"> & WithVal
+export type IdToken = TokenBase<"TOKEN_ID"> & WithVal
+export type StringToken = TokenBase<"TOKEN_STRING"> & WithVal
+export type NumberToken = TokenBase<"TOKEN_NUMBER"> & WithVal
+
 export type Token =
-  | TokenBase<"NULL" | "BOOL" | "STICKY_PAREN_L">
-  | (TokenBase<"SYMBOL" | "KEYWORD" | "ID" | "STRING" | "NUMBER"> & WithVal);
+  NullToken |
+  BoolToken |
+  StickyParenLToken |
+  SymbolToken |
+  KeywordToken |
+  IdToken |
+  StringToken |
+  NumberToken
 
 export type Tokenizer = Iterator<Token>;
 

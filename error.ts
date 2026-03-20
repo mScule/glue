@@ -1,5 +1,11 @@
 import { Location, stringifyLocation } from "./location.ts";
 
-export function createError(message: string, location: Location) {
-    return new Error(`GLUE Compiler: ${message} at ${stringifyLocation(location)}`)
+export function createError(msg: string, location?: Location) {
+    let errmsg = `GLUE Compiler: ${msg}`
+
+    if (location) {
+        errmsg += ` at ${stringifyLocation(location)}`
+    }
+
+    return new Error(errmsg)
 }
