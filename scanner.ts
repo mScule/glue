@@ -1,13 +1,13 @@
 import { createIterator, Iterator } from "./iterator.ts";
 import { Location } from "./location.ts";
 
-export type Scanner = Iterator<string> & {
+export type Scanner = Iterator<string | null> & {
   loc: () => Location;
 };
 
 export function scan(from: string): Scanner {
   const loc: Location = { ln: 1, col: 1 };
-  const iterator = createIterator(from as unknown as string[]);
+  const iterator = createIterator(from as unknown as string[], null);
 
   return {
     ...iterator,

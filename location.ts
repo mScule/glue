@@ -4,5 +4,5 @@ export type Location = {
 }
 
 export function stringifyLocation(location: Location) {
-    return `ln ${location.ln}, col ${location.col}`
+    return `LOC(ln ${location.ln} col ${location.col})`
 }

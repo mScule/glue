@@ -1,0 +1,9 @@
+var some_func = func (a b c) {
+  return { a + 10 b + 20 c + 30 }
+}
+
+var { a b c } = some_func(10 20 30)
+
+console.log(a)
+console.log(b)
+console.log(c)

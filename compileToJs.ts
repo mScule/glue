@@ -86,7 +86,7 @@ function compilePrimary(node: PrimaryNode): string {
 }
 
 function compileCall(node: CallNode): string {
-  return compilePrimary(node.primary) + " " +
+  return compilePrimary(node.primary) +
     node.calls.map((call) =>
       call.type === "NODE_FIELD_CALL"
         ? compileFieldCall(call)
@@ -96,7 +96,7 @@ function compileCall(node: CallNode): string {
 
 function compileUnary(node: UnaryNode): string {
   if ("opr" in node) {
-    return node.opr.val + " " + compileUnary(node.next);
+    return node.opr.val + compileUnary(node.next);
   }
   return compileCall(node.next);
 }
@@ -159,7 +159,11 @@ function compileAssig(node: AssigNode): string {
 }
 
 function compileDecl(node: DeclNode): string {
-  return "let " + node.id.val + " = " + compileExpr(node.value);
+  if ("ids" in node) {
+    return "let [" + node.ids.map(id => id.val).join(",") + "] = " + compileExpr(node.value);
+  } else {
+    return "let " + node.id.val + " = " + compileExpr(node.value)
+  }
 }
 
 function compileIf(node: IfNode): string {
@@ -182,7 +186,11 @@ function compileBreak(_: BreakNode): string {
 }
 
 function compileReturn(node: ReturnNode): string {
-  return "return " + compileExpr(node.value);
+  if ("values" in node) {
+    return "return [" + node.values.map(value => compileExpr(value)).join(",") + "]"
+  } else {
+    return "return " + compileExpr(node.value)
+  }
 }
 
 function compileStmt(node: StmtNode): string {
@@ -205,5 +213,36 @@ function compileStmt(node: StmtNode): string {
 }
 
 export function compileToJs(node: AstRoot): string {
-  return node.stmts.map((stmt) => compileStmt(stmt)).join(";");
+  const intrinsics = `
+    const attempt = function(f) {
+      let result = null;
+      let err = null;
+
+      try {
+        result = f();
+      } catch (e) {
+        err = { msg: e + "" };
+      }
+
+      return [result, err];
+    };
+    const fail = function (msg) {
+      throw msg
+    };
+    const print = function (v) {
+      console.log(v);
+    };
+  `.replaceAll("\n", "").replaceAll(/\s{2,}/g, "").trim()
+
+  const linebreak = ""
+
+  return [
+    "// Intrinsics",
+    intrinsics,
+    linebreak,
+
+    "// Compiled code",
+    node.stmts.map((stmt) => compileStmt(stmt), { parser: "babel" }).join(";"),
+    linebreak
+  ].join("\n")
 }

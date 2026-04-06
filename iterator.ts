@@ -1,12 +1,12 @@
 import { Nullable } from "./nullable.ts";
 
 export type Iterator<T> = {
-  cur: () => Nullable<T>;
-  peak: (offset: number) => Nullable<T>;
+  cur: () => T;
+  peak: (offset: number) => T;
   next: () => void;
 };
 
-export function createIterator<T>(from: T[]): Iterator<T> {
+export function createIterator<T>(from: T[], fallback: T): Iterator<T> {
   let index = 0;
 
   function get(index: number): Nullable<T> {
@@ -20,8 +20,8 @@ export function createIterator<T>(from: T[]): Iterator<T> {
   }
 
   return {
-    cur: () => get(index),
-    peak: (offset: number) => get(index + offset),
+    cur: () => get(index) ?? fallback,
+    peak: (offset: number) => get(index + offset) ?? fallback,
     next: () => index++
   };
 }

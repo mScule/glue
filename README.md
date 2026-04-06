@@ -12,7 +12,7 @@ lines would always look nice.
 ## Glue grammar
 
 ```
-list = "list"  "{" expr* "}"
+list = "list" "{" expr* "}"
 dict = "dict" "{" ((NUMBER | STRING | ID) "=" expr)* "}"
 func = "func" "(" ID* ")" "{" stmt* "}"
 
@@ -32,12 +32,12 @@ or     = and    (("or") and)*
 expr   = or
 
 assig  = expr ("=" expr)?
-decl   = "var" ID "=" expr
+decl   = "var" ("{" ID* "}" | ) "=" expr
 if     = "if" expr "{" stmt* "}"
 for    = "for" ID "in" expr "{" stmt* "}"
 while  = "while" expr "{" stmt* "}"
 break  = "break"
-return = "return" expr
+return = "return" ("{" expr* "}" | expr)
 
 stmt = assig | decl | if | for | while | break | return
 ```

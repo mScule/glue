@@ -164,6 +164,8 @@ function buildWordToken(scanner: Scanner): Token {
     case "while":
     case "break":
     case "return":
+    case "try":
+    case "throw":
       return { type: "TOKEN_KEYWORD", val, loc: scanner.loc() };
     default:
       return { type: "TOKEN_ID", val, loc: scanner.loc() };
@@ -255,31 +257,61 @@ function buildSymbolToken(scanner: Scanner): Token {
   return { type: "TOKEN_SYMBOL", val, loc: scanner.loc() };
 }
 
-export type TokenBase<T extends string> = {
-  type: T;
-  loc: Location;
-};
+export type TokenType<T extends string> = { type: T };
+export type WithVal = { val: string }
+export type WithLoc = { loc: Location } 
 
-export type WithVal = { val: string };
+// Static tokens
 
-export type NullToken = TokenBase<"TOKEN_NULL">;
-export type BoolToken = TokenBase<"TOKEN_BOOL"> & WithVal;
-export type StickyParenLToken = TokenBase<"TOKEN_STICKY_PAREN_L">;
-export type SymbolToken = TokenBase<"TOKEN_SYMBOL"> & WithVal;
-export type KeywordToken = TokenBase<"TOKEN_KEYWORD"> & WithVal;
-export type IdToken = TokenBase<"TOKEN_ID"> & WithVal;
-export type StringToken = TokenBase<"TOKEN_STRING"> & WithVal;
-export type NumberToken = TokenBase<"TOKEN_NUMBER"> & WithVal;
+export type EofToken          = TokenType<"TOKEN_EOF">            & WithLoc;
+export type NullToken         = TokenType<"TOKEN_NULL">           & WithLoc;
+export type StickyParenLToken = TokenType<"TOKEN_STICKY_PAREN_L"> & WithLoc;
+
+// Dynamic tokens
+
+export type BoolToken    = TokenType<"TOKEN_BOOL">    & WithVal & WithLoc;
+export type SymbolToken  = TokenType<"TOKEN_SYMBOL">  & WithVal & WithLoc;
+export type KeywordToken = TokenType<"TOKEN_KEYWORD"> & WithVal & WithLoc;
+export type IdToken      = TokenType<"TOKEN_ID">      & WithVal & WithLoc;
+export type StringToken  = TokenType<"TOKEN_STRING">  & WithVal & WithLoc;
+export type NumberToken  = TokenType<"TOKEN_NUMBER">  & WithVal & WithLoc;
 
 export type Token =
+  | EofToken
   | NullToken
-  | BoolToken
   | StickyParenLToken
+
+  | BoolToken
   | SymbolToken
   | KeywordToken
   | IdToken
   | StringToken
   | NumberToken;
+
+export type TokenOfType<T extends Token["type"]> = Extract<Token, { type: T }>
+
+export function stringifyToken(token: Token) {
+  switch (token.type) {
+    case "TOKEN_NULL":
+      return `NULL`
+    case "TOKEN_BOOL":
+      return `BOOL(${token.val})`
+    case "TOKEN_STICKY_PAREN_L":
+      return `STICKY (`
+    case "TOKEN_SYMBOL":
+      return `SYMBOL ${token.val}`
+    case "TOKEN_KEYWORD":
+      return `KEYWORD(${token.val})`
+    case "TOKEN_ID":
+      return `ID(${token.val})`
+    case "TOKEN_STRING":
+      return `STRING(${token.val})`
+    case "TOKEN_NUMBER":
+      return `NUMBER(${token.val})`
+    case "TOKEN_EOF":
+      return `EOF`
+  }
+}
 
 export type Tokenizer = Iterator<Token>;
 
@@ -318,5 +350,5 @@ export function tokenize(scanner: Scanner): Tokenizer {
     tokens.push(buildSymbolToken(scanner));
   }
 
-  return createIterator(tokens);
+  return createIterator(tokens, { type: "TOKEN_EOF", loc: scanner.loc() });
 }
