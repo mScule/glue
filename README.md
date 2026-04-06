@@ -32,7 +32,7 @@ or     = and    (("or") and)*
 expr   = or
 
 assig  = expr ("=" expr)?
-decl   = "var" ("{" ID* "}" | ) "=" expr
+decl   = "var" ("{" ID* "}" | ID) "=" expr
 if     = "if" expr "{" stmt* "}"
 for    = "for" ID "in" expr "{" stmt* "}"
 while  = "while" expr "{" stmt* "}"
