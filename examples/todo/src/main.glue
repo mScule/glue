@@ -1,0 +1,5 @@
+var hello = func (name) {
+    print("Hello there " + name + "!")
+}
+
+hello("Mike")

@@ -164,8 +164,9 @@ function buildWordToken(scanner: Scanner): Token {
     case "while":
     case "break":
     case "return":
-    case "try":
-    case "throw":
+    case "import":
+    case "from":
+    case "as":
       return { type: "TOKEN_KEYWORD", val, loc: scanner.loc() };
     default:
       return { type: "TOKEN_ID", val, loc: scanner.loc() };

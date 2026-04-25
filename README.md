@@ -32,14 +32,26 @@ or     = and    (("or") and)*
 expr   = or
 
 assig  = expr ("=" expr)?
-decl   = "var" ("{" ID* "}" | ID) "=" expr
-if     = "if" expr "{" stmt* "}"
-for    = "for" ID "in" expr "{" stmt* "}"
-while  = "while" expr "{" stmt* "}"
-break  = "break"
-return = "return" ("{" expr* "}" | expr)
 
-stmt = assig | decl | if | for | while | break | return
+decl       = "export"? "var" ("{" ID* "}" | ID) "=" expr
+if         = "if" expr "{" stmt* "}"
+for        = "for" ID "in" expr "{" stmt* "}"
+while      = "while" expr "{" stmt* "}"
+break      = "break"
+return     = "return" ("{" expr* "}" | expr)
+mod_import = "import" ID ("." ID)* "as" ID
+var_import = "from" ID ("." ID)* "import" "{" ID* "}"
+
+stmt =
+     | assig
+     | decl
+     | if
+     | for
+     | while
+     | break
+     | return
+     | mod_import
+     | var_import
 ```
 
 ## Example
@@ -57,3 +69,14 @@ Granpa is old enough. Welcome!
 
 - Example input file can be found [./examples/bouncer.glue](./examples/bouncer.glue)
 - Example output file can be found in [./examples/bouncer.js](./examples/bouncer.js)
+
+```
+def human = type () dict {
+     name = string
+     age  = 10
+}
+
+var h human = dict {
+     
+}
+```
