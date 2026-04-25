@@ -1,3 +1,7 @@
+from lib.package import {
+    foo
+}
+
 var hello = func (name) {
     print("Hello there " + name + "!")
 }

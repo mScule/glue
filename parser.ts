@@ -580,20 +580,24 @@ function parseVarImport(tokenizer: Tokenizer): VarImportNode {
     requireValueOfType(tokenizer.cur(), "TOKEN_KEYWORD", "import")
     tokenizer.next()
 
-    const ids: IdToken[] = [requireType(tokenizer.cur(), "TOKEN_ID")]
+    requireValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", "{")
+    tokenizer.next()
+
+    const ids: IdToken[] = []
 
     {
         let cur = tokenizer.cur();
 
-        while (cur.type === "TOKEN_SYMBOL" && cur.val === ".") {
-            tokenizer.next()
-
+        while (cur.type !== "TOKEN_EOF" && !(cur.type === "TOKEN_SYMBOL" && cur.val === "}")) {
             ids.push(requireType(tokenizer.cur(), "TOKEN_ID"))
             tokenizer.next()
 
             cur = tokenizer.cur()
         }
     }
+
+    requireValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", "}")
+    tokenizer.next()
 
     return { type: "NODE_IMPORT_VARS", path, ids }
 }
