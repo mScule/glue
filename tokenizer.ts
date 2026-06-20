@@ -155,9 +155,11 @@ function buildWordToken(scanner: Scanner): Token {
     case "list":
     case "dict":
     case "func":
+    case "pipe":
     case "and":
     case "or":
     case "var":
+    case "const":
     case "if":
     case "for":
     case "in":
@@ -187,6 +189,7 @@ function buildSymbolToken(scanner: Scanner): Token {
     case "+":
     case "-":
     case ".":
+    case "|":
       val = scanner.cur()!;
       scanner.next();
       break;

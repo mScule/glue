@@ -6,15 +6,19 @@ import { Tokenizer, BoolToken, IdToken, NullToken, NumberToken, StringToken, Sym
 export type PrimNode = { type: "NODE_PRIM", val: NullToken | BoolToken | NumberToken | StringToken | IdToken }
 export type ListNode = { type: "NODE_LIST", vals: Node[] }
 export type DictNode = { type: "NODE_DICT", vals: { key: NumberToken | StringToken | IdToken, val: Node }[] }
+
 export type FuncNode = { type: "NODE_FUNC", params: IdToken[], stmts: Node[] }
+export type PipeNode = { type: "NODE_PIPE", target: IdToken,   stmts: Node[] }
 
 // Expressions
 
-export type AssigNode  = { type: "NODE_ASSIG",  target: Node, val: Node }
-export type AccessNode = { type: "NODE_ACCESS", origin: Node, props: Node[]  }
-export type CallNode   = { type: "NODE_CALL",   args: Node[] }
-export type UnaryNode  = { type: "NODE_UNARY",  opr: SymbolToken, expr: Node }
-export type BinaryNode = { type: "NODE_BINARY", opr: SymbolToken | KeywordToken, left: Node, right: Node }
+export type AssigNode    = { type: "NODE_ASSIG",     target: Node, val: Node }
+export type AccessNode   = { type: "NODE_ACCESS",    origin: Node, props: Node[]  }
+export type CallNode     = { type: "NODE_CALL",      args: Node[] }
+export type PipeCallNode = { type: "NODE_PIPE_CALL", target: Node, pipe: Node }
+
+export type UnaryNode    = { type: "NODE_UNARY",  opr: SymbolToken, expr: Node }
+export type BinaryNode   = { type: "NODE_BINARY", opr: SymbolToken | KeywordToken, left: Node, right: Node }
 
 // Compound statements
 
@@ -30,8 +34,9 @@ export type BreakNode        = { type: "NODE_BREAK" }
 
 // Declaration
 
-export type SingleDeclNode = { type: "NODE_DECL_SINGLE", id: IdToken,    val: Node, export: boolean, macro: boolean }
-export type MultiDeclNode  = { type: "NODE_DECL_MULTI",  ids: IdToken[], val: Node, export: boolean, macro: boolean }
+export type OverrideNode      = { type: "NODE_OVERRIDE",        id:  IdToken,   func: FuncNode }
+export type SingleVarDeclNode = { type: "NODE_DECL_VAR_SINGLE", id:  IdToken,   val: Node, export: boolean }
+export type MultiVarDeclNode  = { type: "NODE_DECL_VAR_MULTI",  ids: IdToken[], val: Node, export: boolean }
 
 // Module
 
@@ -40,33 +45,69 @@ export type VarImportNode = { type: "NODE_IMPORT_VARS", path: IdToken[], ids: Id
 export type ModuleNode    = { type: "NODE_ROOT", stmts: Node[] }
 
 export type Node =
-    | PrimNode         | ListNode        | DictNode  | FuncNode
-    | CallNode         | AccessNode      | UnaryNode | BinaryNode
+    | PrimNode         | ListNode        | DictNode   | FuncNode  | PipeNode
+    | CallNode         | PipeCallNode    | AccessNode | UnaryNode | BinaryNode
     | IfNode           | WhileNode       | ForNode
     | SingleReturnNode | MultiReturnNode | BreakNode
     | AssigNode
-    | SingleDeclNode | MultiDeclNode
-    | ModImportNode  | VarImportNode | ModuleNode
+    | OverrideNode   | SingleVarDeclNode | MultiVarDeclNode
+    | ModImportNode  | VarImportNode     | ModuleNode
 
-function requireType<T extends Token["type"]>(candidate: Token, type: T): TokenOfType<T> {
-    if (candidate.type !== type) {
-        throw createError(`Expected token of type ${type}, got type ${candidate.type} instead`, candidate.loc);
+
+// Utils
+
+function isType<T extends Token["type"]>(candidate: Token, type: T | T[]): TokenOfType<T> | null {
+    if (typeof type === "object") {
+        for (const t of type) {
+            if (candidate.type === t) {
+                return candidate as TokenOfType<T>
+            }
+        }
+        return null
+    } else {
+        if (candidate.type !== type) {
+            return null
+        }
+        return candidate as TokenOfType<T>
     }
-    return candidate as TokenOfType<T>
 }
 
-function requireValueOfType<T extends Token["type"]>(candidate: Token, type: T, val: string): TokenOfType<T> {
-    const sameType = requireType(candidate, type)
-    const sameVal = "val" in candidate && candidate.val === val
+function isValueOfType<T extends Token["type"]>(candidate: Token, type: T, val: string | string[]): TokenOfType<T> | null {
+    const sameType = isType(candidate, type)
+    const sameVal = typeof val === "string"
+        ? "val" in candidate && candidate.val === val
+        : val.find(val => "val" in candidate && candidate.val === val)
 
     const isIdentical = sameType && sameVal
 
     if (!isIdentical) {
+        return null
+    }
+
+    return candidate as TokenOfType<T>
+}
+
+function requireType<T extends Token["type"]>(candidate: Token, type: T): TokenOfType<T> {
+    const fillsRequirements = isType(candidate, type)
+
+    if (!fillsRequirements) {
+        throw createError(`Expected token of type ${type}, got type ${candidate.type} instead`, candidate.loc);
+    }
+
+    return candidate as TokenOfType<T>
+}
+
+function requireValueOfType<T extends Token["type"]>(candidate: Token, type: T, val: string | string[]): TokenOfType<T> {
+    const fillsRequirements = isValueOfType(candidate, type, val)
+
+    if (!fillsRequirements) {
         throw createError(`Expected token of with value ${val}, got value ${stringifyToken(candidate)} instead`, candidate.loc)
     }
 
     return candidate as TokenOfType<T>
 }
+
+// Rules
 
 function parseBlock(tokenizer: Tokenizer): Node[] {
     const stmts: Node[] = []
@@ -76,7 +117,7 @@ function parseBlock(tokenizer: Tokenizer): Node[] {
 
     let cur = tokenizer.cur()
 
-    while (!(cur.type === "TOKEN_SYMBOL" && cur.val === "}")) {
+    while (!isValueOfType(cur, "TOKEN_SYMBOL", "}")) {
         stmts.push(parseStmt(tokenizer))
         cur = tokenizer.cur()
     }
@@ -97,7 +138,7 @@ function parseList(tokenizer: Tokenizer): Node {
 
     let cur = tokenizer.cur()
 
-    while (!(cur.type === "TOKEN_SYMBOL" && cur.val === "}")) {
+    while (!isValueOfType(cur, "TOKEN_SYMBOL", "}")) {
         vals.push(parseExpr(tokenizer))
         cur = tokenizer.cur()
     }
@@ -118,7 +159,7 @@ function parseDict(tokenizer: Tokenizer): Node {
 
     let cur = tokenizer.cur()
 
-    while (!(cur.type === "TOKEN_SYMBOL" && cur.val === "}")) {
+    while (!isValueOfType(cur, "TOKEN_SYMBOL", "}")) {
         // Key
         const key = tokenizer.cur()
 
@@ -161,14 +202,14 @@ function parseFunc(tokenizer: Tokenizer): Node {
 
     cur = tokenizer.cur()
 
-    while (!(cur.type === "TOKEN_SYMBOL" && cur.val === ")")) {
-        const token = tokenizer.cur()
+    while (!isValueOfType(cur, "TOKEN_SYMBOL", ")")) {
+        const id = isType(tokenizer.cur(), "TOKEN_ID")
 
-        if (token.type !== "TOKEN_ID") {
-            throw createError(`Function parameter declarations has to be ids. Got ${JSON.stringify(token)}`, token.loc)
+        if (!id) {
+            throw createError(`Function parameter declarations has to be ids. Got ${JSON.stringify(tokenizer.cur())}`, tokenizer.cur().loc)
         }
 
-        params.push(token)
+        params.push(id)
         tokenizer.next()
 
         cur = tokenizer.cur()
@@ -183,6 +224,18 @@ function parseFunc(tokenizer: Tokenizer): Node {
     return { type: "NODE_FUNC", params, stmts }
 }
 
+function parsePipe(tokenizer: Tokenizer): Node {
+    requireValueOfType(tokenizer.cur(), "TOKEN_KEYWORD", "pipe")
+    tokenizer.next()
+
+    const target = requireType(tokenizer.cur(), "TOKEN_ID")
+    tokenizer.next()
+
+    const stmts = parseBlock(tokenizer)
+
+    return { type: "NODE_PIPE", target, stmts }
+}
+
 function parseFuncCall(tokenizer: Tokenizer): Node {
     tokenizer.next() // eat "sticky" (
 
@@ -190,7 +243,7 @@ function parseFuncCall(tokenizer: Tokenizer): Node {
 
     let cur = tokenizer.cur()
 
-    while (!(cur.type === "TOKEN_SYMBOL" && cur.val === ")")) {
+    while (!isValueOfType(cur, "TOKEN_SYMBOL", ")")) {
         args.push(parseExpr(tokenizer))
         cur = tokenizer.cur()
     }
@@ -207,14 +260,16 @@ function parseFieldCall(tokenizer: Tokenizer): Node {
 
     // Primitive
 
-    if (cur.type === "TOKEN_NUMBER" || cur.type === "TOKEN_STRING" || cur.type === "TOKEN_ID") {
+    const primitive = isType(cur, ["TOKEN_NUMBER", "TOKEN_STRING", "TOKEN_ID"])
+
+    if (primitive) {
         tokenizer.next()
-        return { type: "NODE_PRIM", val: cur }
+        return { type: "NODE_PRIM", val: primitive }
     }
 
     // Expression
 
-    if (cur.type === "TOKEN_STICKY_PAREN_L") {
+    if (isType(cur, "TOKEN_STICKY_PAREN_L")) {
         tokenizer.next() // eat sticky (
         const expr = parseExpr(tokenizer)
 
@@ -230,24 +285,30 @@ function parseFieldCall(tokenizer: Tokenizer): Node {
 function parsePrimary(tokenizer: Tokenizer): Node {
     const cur = tokenizer.cur()
 
-    if (cur.type === "TOKEN_NULL" || cur.type === "TOKEN_BOOL" || cur.type === "TOKEN_NUMBER" || cur.type === "TOKEN_STRING" || cur.type === "TOKEN_ID") {
+    const primitive = isType(cur, ["TOKEN_NULL", "TOKEN_BOOL", "TOKEN_NUMBER", "TOKEN_STRING", "TOKEN_ID"])
+
+    if (primitive) {
         tokenizer.next()
-        return { type: "NODE_PRIM", val: cur }
+        return { type: "NODE_PRIM", val: primitive }
     }
 
-    if (cur.type === "TOKEN_KEYWORD" && cur.val === "list") {
+    if (isValueOfType(cur, "TOKEN_KEYWORD", "list")) {
         return parseList(tokenizer)
     }
 
-    if (cur.type === "TOKEN_KEYWORD" && cur.val === "dict") {
+    if (isValueOfType(cur, "TOKEN_KEYWORD", "dict")) {
         return parseDict(tokenizer)
     }
 
-    if (cur.type === "TOKEN_KEYWORD" && cur.val === "func") {
+    if (isValueOfType(cur, "TOKEN_KEYWORD", "func")) {
         return parseFunc(tokenizer)
     }
 
-    if (cur.type === "TOKEN_SYMBOL" && cur.val === "(") {
+    if (isValueOfType(cur, "TOKEN_KEYWORD", "pipe")) {
+        return parsePipe(tokenizer)
+    }
+
+    if (isValueOfType(cur, "TOKEN_SYMBOL", "(")) {
         tokenizer.next() // eat non sticky (
         const expr = parseExpr(tokenizer)
 
@@ -271,11 +332,13 @@ function parseCall(tokenizer: Tokenizer): Node {
 
     let cur = tokenizer.cur()
 
-    while (cur.type === "TOKEN_STICKY_PAREN_L" || (cur.type === "TOKEN_SYMBOL" && cur.val === ".")) {
-        if (cur.type === "TOKEN_STICKY_PAREN_L") {
+    while (true) {
+        if (isType(cur, "TOKEN_STICKY_PAREN_L")) {
             props.push(parseFuncCall(tokenizer))
-        } else {
+        } else if (isValueOfType(cur, "TOKEN_SYMBOL", ".")) {
             props.push(parseFieldCall(tokenizer))
+        } else {
+            break;
         }
 
         cur = tokenizer.cur()
@@ -288,25 +351,36 @@ function parseCall(tokenizer: Tokenizer): Node {
     return { type: "NODE_ACCESS", origin, props }
 }
 
-function parseUnary(tokenizer: Tokenizer): Node {
-    const cur = tokenizer.cur()
+function parsePipeCall(tokenizer: Tokenizer): Node {
+    const target = parseCall(tokenizer);
 
-    if (cur.type === "TOKEN_SYMBOL" && (cur.val === "!" || cur.val === "-")) {
-        tokenizer.next()
-        return { type: "NODE_UNARY", opr: cur, expr: parseUnary(tokenizer) }
+    if (isValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", "|")) {
+        tokenizer.next();
+        return { type: "NODE_PIPE_CALL", target, pipe: parsePipeCall(tokenizer) }
     }
 
-    return parseCall(tokenizer)
+    return target;
+}
+
+function parseUnary(tokenizer: Tokenizer): Node {
+    const opr = isValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", ["!", "-"])
+
+    if (opr) {
+        tokenizer.next()
+        return { type: "NODE_UNARY", opr, expr: parseUnary(tokenizer) }
+    }
+
+    return parsePipeCall(tokenizer)
 }
 
 function parseFactor(tokenizer: Tokenizer): Node {
     const left = parseUnary(tokenizer)
 
-    const cur = tokenizer.cur()
+    const opr = isValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", ["*", "/", "%"])
 
-    if (cur.type === "TOKEN_SYMBOL" && (cur.val === "*" || cur.val === "/" || cur.val === "%")) {
+    if (opr) {
         tokenizer.next()
-        return { type: "NODE_BINARY", opr: cur, left, right: parseFactor(tokenizer) }
+        return { type: "NODE_BINARY", opr, left, right: parseFactor(tokenizer) }
     }
 
     return left
@@ -315,11 +389,11 @@ function parseFactor(tokenizer: Tokenizer): Node {
 function parseTerm(tokenizer: Tokenizer): Node {
     const left = parseFactor(tokenizer)
 
-    const cur = tokenizer.cur()
+    const opr = isValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", ["+", "-"])
 
-    if (cur.type === "TOKEN_SYMBOL" && (cur.val === "+" || cur.val === "-")) {
+    if (opr) {
         tokenizer.next()
-        return { type: "NODE_BINARY", opr: cur, left, right: parseTerm(tokenizer) }
+        return { type: "NODE_BINARY", opr, left, right: parseTerm(tokenizer) }
     }
 
     return left
@@ -328,11 +402,11 @@ function parseTerm(tokenizer: Tokenizer): Node {
 function parseComp(tokenizer: Tokenizer): Node {
     const left = parseTerm(tokenizer)
 
-    const cur = tokenizer.cur()
+    const opr = isValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", [">", "<", ">=", "<="])
 
-    if (cur.type === "TOKEN_SYMBOL" && (cur.val === ">" || cur.val === "<" || cur.val === ">=" || cur.val === "<=")) {
+    if (opr) {
         tokenizer.next()
-        return { type: "NODE_BINARY", opr: cur, left, right: parseComp(tokenizer) }
+        return { type: "NODE_BINARY", opr, left, right: parseComp(tokenizer) }
     }
 
     return left
@@ -341,11 +415,11 @@ function parseComp(tokenizer: Tokenizer): Node {
 function parseEq(tokenizer: Tokenizer): Node {
     const left = parseComp(tokenizer)
 
-    const cur = tokenizer.cur()
+    const opr = isValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", ["!=", "=="])
 
-    if (cur.type === "TOKEN_SYMBOL" && (cur.val === "!=" || cur.val === "==")) {
+    if (opr) {
         tokenizer.next()
-        return { type: "NODE_BINARY", opr: cur, left, right: parseEq(tokenizer) }
+        return { type: "NODE_BINARY", opr, left, right: parseEq(tokenizer) }
     }
 
     return left
@@ -354,11 +428,11 @@ function parseEq(tokenizer: Tokenizer): Node {
 function parseAnd(tokenizer: Tokenizer): Node {
     const left = parseEq(tokenizer)
 
-    const cur = tokenizer.cur()
+    const opr = isValueOfType(tokenizer.cur(), "TOKEN_KEYWORD", "and")
 
-    if (cur.type === "TOKEN_KEYWORD" && cur.val === "and") {
+    if (opr) {
         tokenizer.next()
-        return { type: "NODE_BINARY", opr: cur, left, right: parseAnd(tokenizer) }
+        return { type: "NODE_BINARY", opr, left, right: parseAnd(tokenizer) }
     }
 
     return left
@@ -367,11 +441,11 @@ function parseAnd(tokenizer: Tokenizer): Node {
 function parseOr(tokenizer: Tokenizer): Node {
     const left = parseAnd(tokenizer)
 
-    const cur = tokenizer.cur()
+    const opr = isValueOfType(tokenizer.cur(), "TOKEN_KEYWORD", "or")
 
-    if (cur.type === "TOKEN_KEYWORD" && cur.val === "or") {
+    if (opr) {
         tokenizer.next()
-        return { type: "NODE_BINARY", opr: cur, left, right: parseOr(tokenizer) }
+        return { type: "NODE_BINARY", opr, left, right: parseOr(tokenizer) }
     }
 
     return left
@@ -386,7 +460,7 @@ function parseAssig(tokenizer: Tokenizer): Node {
 
     const cur = tokenizer.cur()
 
-    if (cur.type === "TOKEN_SYMBOL" && cur.val === "=") {
+    if (isValueOfType(cur, "TOKEN_SYMBOL", "=")) {
         tokenizer.next()
         return { type: "NODE_ASSIG", target, val: parseExpr(tokenizer) }
     }
@@ -394,7 +468,7 @@ function parseAssig(tokenizer: Tokenizer): Node {
     return target
 }
 
-function parseDecl(tokenizer: Tokenizer): Node {
+function parseVarDecl(tokenizer: Tokenizer): Node {
     const first = requireType(tokenizer.cur(), "TOKEN_KEYWORD")
 
     // export (optional)
@@ -409,7 +483,7 @@ function parseDecl(tokenizer: Tokenizer): Node {
     requireValueOfType(tokenizer.cur(), "TOKEN_KEYWORD", "var")
     tokenizer.next()
 
-    if (tokenizer.cur().type === "TOKEN_SYMBOL") {
+    if (isType(tokenizer.cur(), "TOKEN_SYMBOL")) {
         // { ids* }
 
         const ids: IdToken[] = []
@@ -419,7 +493,7 @@ function parseDecl(tokenizer: Tokenizer): Node {
 
         let token = tokenizer.cur()
 
-        while (!(token.type === "TOKEN_SYMBOL" && token.val === "}")) {
+        while (!isValueOfType(token, "TOKEN_SYMBOL", "}")) {
             const id = requireType(token, "TOKEN_ID")
             ids.push(id)
 
@@ -434,7 +508,7 @@ function parseDecl(tokenizer: Tokenizer): Node {
         requireValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", "=")
         tokenizer.next()
 
-        return { type: "NODE_DECL_MULTI", ids, val: parseExpr(tokenizer), export: doExport, macro: false }
+        return { type: "NODE_DECL_VAR_MULTI", ids, val: parseExpr(tokenizer), export: doExport }
     } else {
         // id
         const id = requireType(tokenizer.cur(), "TOKEN_ID");
@@ -444,7 +518,7 @@ function parseDecl(tokenizer: Tokenizer): Node {
         requireValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", "=")
         tokenizer.next()
 
-        return { type: "NODE_DECL_SINGLE", id, val: parseExpr(tokenizer), export: doExport, macro: false }
+        return { type: "NODE_DECL_VAR_SINGLE", id, val: parseExpr(tokenizer), export: doExport }
     }
 }
 
@@ -504,7 +578,7 @@ function parseReturn(tokenizer: Tokenizer): Node {
 
     const first = tokenizer.cur()
 
-    if (first.type === "TOKEN_SYMBOL") {
+    if (isType(first, "TOKEN_SYMBOL")) {
         // Multiple return values
 
         const vals: Node[] = []
@@ -514,7 +588,7 @@ function parseReturn(tokenizer: Tokenizer): Node {
 
         let token = tokenizer.cur()
 
-        while(!(token.type === "TOKEN_SYMBOL" && token.val === "}")) {
+        while(!isValueOfType(token, "TOKEN_SYMBOL", "}")) {
             vals.push(parseExpr(tokenizer))
             token = tokenizer.cur()
         }
@@ -539,7 +613,7 @@ function parseModImport(tokenizer: Tokenizer): Node {
 
     let cur = tokenizer.cur();
 
-    while (cur.type === "TOKEN_SYMBOL" && cur.val === ".") {
+    while (isValueOfType(cur, "TOKEN_SYMBOL", ".")) {
         tokenizer.next()
 
         path.push(requireType(tokenizer.cur(), "TOKEN_ID"))
@@ -557,7 +631,7 @@ function parseModImport(tokenizer: Tokenizer): Node {
     return { type: "NODE_IMPORT_MOD", path, id }
 }
 
-function parseVarImport(tokenizer: Tokenizer): VarImportNode {
+function parseVarImport(tokenizer: Tokenizer): Node {
     requireValueOfType(tokenizer.cur(), "TOKEN_KEYWORD", "from")
     tokenizer.next()
 
@@ -567,7 +641,7 @@ function parseVarImport(tokenizer: Tokenizer): VarImportNode {
     {
         let cur = tokenizer.cur();
 
-        while (cur.type === "TOKEN_SYMBOL" && cur.val === ".") {
+        while (isValueOfType(cur, "TOKEN_SYMBOL", ".")) {
             tokenizer.next()
 
             path.push(requireType(tokenizer.cur(), "TOKEN_ID"))
@@ -588,7 +662,7 @@ function parseVarImport(tokenizer: Tokenizer): VarImportNode {
     {
         let cur = tokenizer.cur();
 
-        while (cur.type !== "TOKEN_EOF" && !(cur.type === "TOKEN_SYMBOL" && cur.val === "}")) {
+        while (!isType(cur, "TOKEN_EOF") && !isValueOfType(cur, "TOKEN_SYMBOL", "}")) {
             ids.push(requireType(tokenizer.cur(), "TOKEN_ID"))
             tokenizer.next()
 
@@ -609,35 +683,35 @@ function parseStmt(tokenizer: Tokenizer): Node {
         throw Error("PARSESTMT")
     }
 
-    if (cur.type === "TOKEN_KEYWORD" && cur.val === "var") {
-        return parseDecl(tokenizer)
+    if (isValueOfType(cur, "TOKEN_KEYWORD", ["var", "export"])) {
+        return parseVarDecl(tokenizer)
     }
 
-    if (cur.type === "TOKEN_KEYWORD" && cur.val === "if") {
+    if (isValueOfType(cur, "TOKEN_KEYWORD", "if")) {
         return parseIf(tokenizer)
     }
 
-    if (cur.type === "TOKEN_KEYWORD" && cur.val === "for") {
+    if (isValueOfType(cur, "TOKEN_KEYWORD", "for")) {
         return parseFor(tokenizer)
     }
 
-    if (cur.type === "TOKEN_KEYWORD" && cur.val === "while") {
+    if (isValueOfType(cur, "TOKEN_KEYWORD", "while")) {
         return parseWhile(tokenizer)
     }
 
-    if (cur.type === "TOKEN_KEYWORD" && cur.val === "break") {
+    if (isValueOfType(cur, "TOKEN_KEYWORD", "break")) {
         return parseBreak(tokenizer) 
     }
 
-    if (cur.type === "TOKEN_KEYWORD" && cur.val === "return") {
+    if (isValueOfType(cur, "TOKEN_KEYWORD", "return")) {
         return parseReturn(tokenizer)
     }
 
-    if (cur.type === "TOKEN_KEYWORD" && cur.val === "import") {
+    if (isValueOfType(cur, "TOKEN_KEYWORD", "import")) {
         return parseModImport(tokenizer)
     }
 
-    if (cur.type === "TOKEN_KEYWORD" && cur.val === "from") {
+    if (isValueOfType(cur, "TOKEN_KEYWORD", "from")) {
         return parseVarImport(tokenizer)
     }
 
@@ -647,7 +721,7 @@ function parseStmt(tokenizer: Tokenizer): Node {
 export function parse(tokenizer: Tokenizer): Node {
     const stmts: Node[] = []
 
-    while(tokenizer.cur().type !== "TOKEN_EOF") {
+    while(!isType(tokenizer.cur(),"TOKEN_EOF")) {
         stmts.push(parseStmt(tokenizer))
     }
 

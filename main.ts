@@ -2,8 +2,7 @@ import { parse } from "./parser.ts";
 import { scan } from "./scanner.ts";
 import { tokenize } from "./tokenizer.ts";
 
-import { join, relative, dirname } from "@std/path";
-import { ensureDir } from "@std/fs";
+import { join, relative } from "@std/path";
 
 function getArg(args: string[], ...keys: string[]) {
   for (const key of keys) {
@@ -52,7 +51,7 @@ async function processEntry(
     const inputPath = fullPath;
 
     const relativePath = relative(sourceRoot, inputPath);
-    const outputPath = join(buildRoot, relativePath + ".js");
+    // const outputPath = join(buildRoot, relativePath + ".js");
 
     try {
       const source = await Deno.readTextFile(inputPath);

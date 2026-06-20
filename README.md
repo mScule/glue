@@ -14,14 +14,16 @@ lines would always look nice.
 ```
 list = "list" "{" expr* "}"
 dict = "dict" "{" ((NUMBER | STRING | ID) "=" expr)* "}"
-func = "func" "(" ID* ")" "{" stmt* "}"
+func = "func" (("(" ID* ")") | ID) (("->" stmt) | "{" stmt* "}")
+pipe = "pipe" ID (("->" stmt) | "{" stmt* "}")
 
 func_call  = STICKY_PAREN_L expr* PAREN_R
 field_call = "." (NUMBER | STRING | ID | STICKY_PAREN_L expr PAREN_R ")"
 
-primary = "null" | BOOL | NUMBER | STRING | ID | list | dict | func | "(" expr ")"
-call    = primary (func_call | field_call)*
-unary   = call | ("!" | "-") unary
+primary   = "null" | BOOL | NUMBER | STRING | ID | list | dict | func | pipe | "(" expr ")"
+call      = primary (func_call | field_call)*
+pipe_call = call ("|" pipe_call)?
+unary     = pipe_call | ("!" | "-") unary
 
 factor = unary  (("*" | "/" | "%") unary)*
 term   = factor (("+" | "-") factor)*
