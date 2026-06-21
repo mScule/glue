@@ -34,7 +34,6 @@ export type BreakNode        = { type: "NODE_BREAK" }
 
 // Declaration
 
-export type OverrideNode      = { type: "NODE_OVERRIDE",        id:  IdToken,   func: FuncNode }
 export type SingleVarDeclNode = { type: "NODE_DECL_VAR_SINGLE", id:  IdToken,   val: Node, export: boolean }
 export type MultiVarDeclNode  = { type: "NODE_DECL_VAR_MULTI",  ids: IdToken[], val: Node, export: boolean }
 
@@ -42,7 +41,7 @@ export type MultiVarDeclNode  = { type: "NODE_DECL_VAR_MULTI",  ids: IdToken[], 
 
 export type ModImportNode = { type: "NODE_IMPORT_MOD",  path: IdToken[], id: IdToken    };
 export type VarImportNode = { type: "NODE_IMPORT_VARS", path: IdToken[], ids: IdToken[] };
-export type ModuleNode    = { type: "NODE_ROOT", stmts: Node[] }
+export type ModuleNode    = { type: "NODE_MODULE", stmts: Node[] }
 
 export type Node =
     | PrimNode         | ListNode        | DictNode   | FuncNode  | PipeNode
@@ -50,9 +49,8 @@ export type Node =
     | IfNode           | WhileNode       | ForNode
     | SingleReturnNode | MultiReturnNode | BreakNode
     | AssigNode
-    | OverrideNode   | SingleVarDeclNode | MultiVarDeclNode
-    | ModImportNode  | VarImportNode     | ModuleNode
-
+    | SingleVarDeclNode | MultiVarDeclNode
+    | ModImportNode     | VarImportNode    | ModuleNode
 
 // Utils
 
@@ -725,5 +723,5 @@ export function parse(tokenizer: Tokenizer): Node {
         stmts.push(parseStmt(tokenizer))
     }
 
-    return { type: "NODE_ROOT", stmts }
+    return { type: "NODE_MODULE", stmts }
 }

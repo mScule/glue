@@ -1,1 +1,3 @@
-var asdf = "hello"
+var boxify = pipe p { return "[" + p + "]" }
+var asdf = "hello" | boxify | boxify | boxify | boxify
+console.log(asdf)

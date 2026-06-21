@@ -1,5 +1,6 @@
 import { parse } from "./parser.ts";
 import { scan } from "./scanner.ts";
+import { compile } from "./to-js.ts";
 import { tokenize } from "./tokenizer.ts";
 
 import { join, relative } from "@std/path";
@@ -59,8 +60,11 @@ async function processEntry(
       const chars = scan(source);
       const tokens = tokenize(chars);
       const ast = parse(tokens);
+      const result = compile(ast)
 
-      console.log(JSON.stringify(ast))
+      console.log(result)
+
+      eval(result)
 
       // await ensureDir(dirname(outputPath));
       // await Deno.writeTextFile(outputPath, js);
