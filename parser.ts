@@ -15,7 +15,7 @@ export type PipeNode = { type: "NODE_PIPE", target: IdToken,   stmts: Node[] }
 export type AssigNode    = { type: "NODE_ASSIG",     target: Node, val: Node }
 export type AccessNode   = { type: "NODE_ACCESS",    origin: Node, props: Node[]  }
 export type CallNode     = { type: "NODE_CALL",      args: Node[] }
-export type PipeCallNode = { type: "NODE_PIPE_CALL", target: Node, pipe: Node }
+export type PipeCallNode = { type: "NODE_PIPE_CALL", target: Node, pipes: Node[] }
 
 export type UnaryNode    = { type: "NODE_UNARY",  opr: SymbolToken, expr: Node }
 export type BinaryNode   = { type: "NODE_BINARY", opr: SymbolToken | KeywordToken, left: Node, right: Node }
@@ -352,12 +352,18 @@ function parseCall(tokenizer: Tokenizer): Node {
 function parsePipeCall(tokenizer: Tokenizer): Node {
     const target = parseCall(tokenizer);
 
-    if (isValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", "|")) {
-        tokenizer.next();
-        return { type: "NODE_PIPE_CALL", target, pipe: parsePipeCall(tokenizer) }
+    if (!isValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", "|")) {
+        return target;
     }
 
-    return target;
+    const pipes: Node[] = [];
+
+    while (isValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", "|")) {
+        tokenizer.next();
+        pipes.push(parseCall(tokenizer))
+    }
+
+    return { type: "NODE_PIPE_CALL", target, pipes }
 }
 
 function parseUnary(tokenizer: Tokenizer): Node {

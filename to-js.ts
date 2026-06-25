@@ -55,18 +55,16 @@ export const compile: Compiler<string> = function (ast) {
                 ")"
             ].join("")
         case "NODE_PIPE_CALL":
-            return [
-                compile(ast.pipe),
-                "(",
-                compile(ast.target),
-                ")"
-            ].join("")
-        case "NODE_ACCESS":
+            return [...ast.pipes, ast.target].map(n => compile(n)).reverse().reduce((prev, cur) => `${cur}(${prev})`)
+        case "NODE_ACCESS": {
+            const first = ast.props.slice(0, ast.props.length - 1)
+            const last = ast.props[ast.props.length - 1]
             return [
                 compile(ast.origin),
-                ".",
-                ast.props.map(p => compile(p)).join("")
+                first.map(p => "[" + compile(p) + "]").join(""),
+                compile(last)
             ].join("")
+        }
         case "NODE_UNARY":
             return [
                 ast.opr.val,
