@@ -1,4 +1,5 @@
 import { Compiler } from "./compiler.ts";
+import { Node } from "./parser.ts";
 
 export const compile: Compiler<string> = function (ast) {
     switch(ast.type) {
@@ -27,7 +28,7 @@ export const compile: Compiler<string> = function (ast) {
                         switch(key.type) {
                             case "TOKEN_NUMBER":
                             case "TOKEN_STRING":
-                                return "[" + key.val + "]"
+                                return "[\"" + key.val + "\"]"
                             case "TOKEN_ID":
                                 return key.val
                         }
@@ -41,7 +42,7 @@ export const compile: Compiler<string> = function (ast) {
                 "function", "(", ast.params.map(param => param.val), ")", "{",
                 ast.stmts.map(stmt => compile(stmt)).join(";"),
                 "}"
-            ].join(" ")
+            ].join("")
         case "NODE_PIPE":
             return [
                 "(", "function", "(", ast.target.val, ")", "{",
@@ -55,10 +56,18 @@ export const compile: Compiler<string> = function (ast) {
                 ")"
             ].join("")
         case "NODE_PIPE_CALL":
-            return [...ast.pipes, ast.target].map(n => compile(n)).reverse().reduce((prev, cur) => `${cur}(${prev})`)
+            return [...ast.pipes.reverse(), ast.target].map(n => compile(n)).reverse().reduce((prev, cur) => `${cur}(${prev})`)
         case "NODE_ACCESS": {
             const first = ast.props.slice(0, ast.props.length - 1)
             const last = ast.props[ast.props.length - 1]
+
+            if (first.length === 0) {
+                return [
+                    compile(ast.origin),
+                    "[", compile(last), "]"
+                ].join("")
+            }
+
             return [
                 compile(ast.origin),
                 first.map(p => "[" + compile(p) + "]").join(""),
@@ -73,9 +82,15 @@ export const compile: Compiler<string> = function (ast) {
         case "NODE_BINARY":
             return [
                 compile(ast.left),
-                ast.opr.val,
+                (() => {
+                    switch (ast.opr.val) {
+                        case "or": return "||"
+                        case "and": return "&&"
+                        default: return ast.opr.val
+                    }
+                })(),
                 compile(ast.right)
-            ].join(" ")
+            ].join("")
         case "NODE_IF":
             return [
                 "if", "(", compile(ast.cond), ")", "{",
@@ -111,13 +126,13 @@ export const compile: Compiler<string> = function (ast) {
         case "NODE_DECL_VAR_SINGLE":
             return [
                 ast.export ? "export" : null,
-                "let", ast.id.val, "=", compile(ast.val)
-            ].filter(t => t !== null).join(" ")
+                "let ", ast.id.val, "=", compile(ast.val)
+            ].filter(t => t !== null).join("")
         case "NODE_DECL_VAR_MULTI":
             return [
-                "let", "[", ast.ids.map(id => id.val).join(","), "]", "=",
+                "let ", "[", ast.ids.map(id => id.val).join(","), "]", "=",
                 compile(ast.val)
-            ].join(" ")
+            ].join("")
         case "NODE_IMPORT_MOD":
             return [
                 "import", "*", "as", ast.id.val, "from",

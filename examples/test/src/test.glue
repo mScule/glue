@@ -1,3 +1,34 @@
-var boxify = pipe p { return "[" + p + "]" }
-var asdf = "hello" | boxify | boxify | boxify | boxify
-console."log"(asdf)
+var first = pipe l {
+    return l.(0)
+}
+
+var human = dict {
+    "create" = func (name age) {
+        return dict {
+            "name" = name or ""
+            "age"  = age  or 0
+        }
+    }
+    "get_name" = pipe cur { return cur."name" }
+    "get_age"  = pipe cur { return cur."age"  }
+    "set_name" = func (val) {
+        return pipe cur { cur."name" = val }
+    }
+    "set_age" = func (val) {
+        return pipe cur { cur."age" = val }
+    }
+    "to_string" = pipe cur {
+        return
+            "Name: " + cur | human."get_name" + " " +
+            "Age: "  + cur | human."get_age"
+    }
+}
+
+var humans = list {
+  human."create"()
+  human."create"("Mike" 39)
+}
+
+humans | first | human."set_age"(10)
+
+console."log"(humans)

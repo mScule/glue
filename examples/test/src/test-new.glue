@@ -1,0 +1,42 @@
+var first = pipe l -> l.0
+
+var concat = func args {
+    var result = ""
+
+    for arg in args {
+        result = result & arg
+    }
+
+    return result
+}
+
+var human = dict {
+    create = func (name age) -> dict {
+        name = name or ""
+        age  = age  or 0
+    }
+
+    get_name = pipe h -> h.name
+    get_age  = pipe h -> h.age
+
+    set_name = func (v) -> pipe h {
+        h.name = v
+    }
+    set_age = func (v) -> pipe h {
+        h.age = v
+    }
+
+    to_string = pipe h -> concat(
+        "Name: " h | human.get_name " "
+        "Age: "  h | human.get_age
+    )
+}
+
+var humans = list {
+  human.create()
+  human.create("Mike" 39)
+}
+
+humans | first | human.set_age(10)
+
+console.log(humans)
