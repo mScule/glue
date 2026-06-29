@@ -1,37 +1,89 @@
 import { parse } from "./parser.ts";
 import { scan } from "./scanner.ts";
+import { compile } from "./to-js.ts";
 import { tokenize } from "./tokenizer.ts";
-import { compileToJs } from "./compileToJs.ts";
 
-function getArg(args: string[], key: string) {
-  const index = args.indexOf(key);
+import { join, relative } from "@std/path";
 
-  if (index === -1 || index + 1 >= args.length) {
-    return null;
+function getArg(args: string[], ...keys: string[]) {
+  for (const key of keys) {
+    const index = args.indexOf(key);
+    if (index !== -1 && index + 1 < args.length) {
+      return args[index + 1];
+    }
   }
-
-  return args[index + 1];
+  return null;
 }
 
-if (import.meta.main) {
-  const inputPath = getArg(Deno.args, "-f");
-  const outputPath = getArg(Deno.args, "-o");
+async function buildProject(projectPath: string) {
+  const configPath = join(projectPath, "glueconfig.json");
 
-  if (!inputPath) {
-    console.error("Usage: -f <input> [-o <output>]");
+  let config;
+  try {
+    const raw = await Deno.readTextFile(configPath);
+    config = JSON.parse(raw);
+  } catch (err) {
+    console.error("Failed to read glueconfig.json:", err);
     Deno.exit(1);
   }
 
-  const source = await Deno.readTextFile(inputPath);
+  const sourceDir = join(projectPath, config.source);
+  const buildDir = join(projectPath, config.build);
 
-  const chars = scan(source);
-  const tokens = tokenize(chars);
-  const ast = parse(tokens);
-  const js = compileToJs(ast);
-
-  if (outputPath) {
-    await Deno.writeTextFile(outputPath, js);
-  } else {
-    eval(js);
+  for await (const entry of Deno.readDir(sourceDir)) {
+    await processEntry(entry.name, sourceDir, buildDir);
   }
+}
+
+async function processEntry(
+  entryName: string,
+  sourceRoot: string,
+  buildRoot: string,
+  currentPath = ""
+) {
+  const fullPath = join(sourceRoot, currentPath, entryName);
+  const stat = await Deno.stat(fullPath);
+
+  if (stat.isDirectory) {
+    for await (const entry of Deno.readDir(fullPath)) {
+      await processEntry(entry.name, sourceRoot, buildRoot, join(currentPath, entryName));
+    }
+  } else if (stat.isFile) {
+    const inputPath = fullPath;
+
+    const relativePath = relative(sourceRoot, inputPath);
+    // const outputPath = join(buildRoot, relativePath + ".js");
+
+    try {
+      const source = await Deno.readTextFile(inputPath);
+
+      const chars = scan(source);
+      const tokens = tokenize(chars);
+      const ast = parse(tokens);
+      const result = compile(ast)
+
+      console.log(result)
+
+      eval(result)
+
+      // await ensureDir(dirname(outputPath));
+      // await Deno.writeTextFile(outputPath, js);
+
+      console.log("Built:", relativePath);
+    } catch (err) {
+      console.error("Failed to build:", relativePath);
+      console.error(err);
+    }
+  }
+}
+
+if (import.meta.main) {
+  const projectPath = getArg(Deno.args, "-p", "--project");
+
+  if (!projectPath) {
+    console.error("Usage: -p <projectPath>");
+    Deno.exit(1);
+  }
+
+  await buildProject(projectPath);
 }

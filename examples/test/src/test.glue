@@ -1,0 +1,62 @@
+# Generic
+
+var enumeration = dict {
+    create = func (id) -> dict {
+        id = id
+    }
+
+    match = func (id payload) -> pipe cur -> dict {
+        enumeration_id = cur.id
+
+        id      = id
+        payload = payload or null
+    }
+
+    is_equal = func (enumeration) -> pipe cur ->
+        cur.id == enumeration.id
+}
+
+var match = dict {
+    unwrap = func () -> pipe cur ->
+        cur.payload
+
+    equals = func (match) -> pipe cur ->
+        cur.enumeration_id == match.enumeration_id and
+        cur.id             == match.id
+
+    id = pipe cur -> cur.id
+}
+
+# Option
+
+var option = enumeration.create("option")
+
+var some = func (value) -> option | enumeration.match("some" value)
+var none = option | enumeration.match("none")
+
+# Thingie
+
+var do_stuff = func (state) {
+    if state == "good" {
+        return some("hello")
+    }
+    return none
+}
+
+var results = list {
+    do_stuff("good")
+    do_stuff("bad")
+}
+
+console.log("-----")
+
+for result in results {
+    console.log("Trying result: " + result | match.id)
+    if result | match.equals(none) {
+        console.log("BAD")
+    }
+    if result | match.equals(some()) {
+        console.log("GOOD" "Unwrapped" result | match.unwrap())
+    }
+    console.log("-----")
+}

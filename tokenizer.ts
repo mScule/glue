@@ -155,17 +155,20 @@ function buildWordToken(scanner: Scanner): Token {
     case "list":
     case "dict":
     case "func":
+    case "pipe":
     case "and":
     case "or":
     case "var":
+    case "const":
     case "if":
     case "for":
     case "in":
     case "while":
     case "break":
     case "return":
-    case "try":
-    case "throw":
+    case "import":
+    case "from":
+    case "as":
       return { type: "TOKEN_KEYWORD", val, loc: scanner.loc() };
     default:
       return { type: "TOKEN_ID", val, loc: scanner.loc() };
@@ -184,25 +187,35 @@ function buildSymbolToken(scanner: Scanner): Token {
     case "/":
     case "%":
     case "+":
-    case "-":
     case ".":
+    case "|":
       val = scanner.cur()!;
       scanner.next();
       break;
 
     case "(":
       {
-        const peak = scanner.peak(-1) ?? "";
+        const left = scanner.peak(-1) ?? "";
 
         if (
-          isLetter(peak) || isDigit(peak) || peak === '"' || peak === ")" ||
-          peak === "}" || peak === "."
+          isLetter(left) || isDigit(left) || left === '"' || left === ")" ||
+          left === "}" || left === "."
         ) {
           scanner.next();
           return { type: "TOKEN_STICKY_PAREN_L", loc: scanner.loc() };
         }
 
         val = scanner.cur()!;
+        scanner.next();
+      }
+      break;
+
+    case "-":
+      val += scanner.cur();
+      scanner.next();
+
+      if (scanner.cur() === ">") {
+        val += scanner.cur();
         scanner.next();
       }
       break;

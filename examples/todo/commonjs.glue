@@ -1,0 +1,37 @@
+# Literals
+
+override NODE_PRIM = func (val) { return "" }
+override NODE_LIST = func (vals) { return "" }
+override NODE_DICT = func (vals) { return "" }
+override NODE_FUNC = func (params stmts) { return "" }
+
+# Expressions
+
+override NODE_ASSIG = func (target val) { return "" }
+override NODE_ACCESS = func (origin props) { return "" }
+override NODE_CALL = func (args) { return "" }
+override NODE_UNARY = func (opr expr) { return "" }
+override NODE_BINARY = func (opr left right) { return "" }
+
+# Compound statements
+
+override NODE_IF = func (cond stmts) { return "" }
+override NODE_WHILE = func (cond stmts) { return "" }
+override NODE_FOR = func (item iter stmts) { return "" }
+
+# Control flow
+
+override NODE_RETURN_SINGLE = func (val) { return "" }
+override NODE_RETURN_MULTI = func (vals) { return "" }
+override NODE_BREAK = func () { return "break" }
+
+# Declaration
+
+override NODE_DECL_VAR_SINGLE = func (id val exported) { return "" }
+override NODE_DECL_VAR_MULTI = func (ids val exported) { return "" }
+
+# Module
+
+override NODE_IMPORT_MOD = func (path id) { return "" }
+override NODE_IMPORT_VARS = func (path ids) { return "" }
+override NODE_ROOT = func (stmts) { return "" }
