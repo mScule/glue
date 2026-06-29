@@ -12,6 +12,8 @@ export type PipeNode = { type: "NODE_PIPE", target: IdToken,   stmts: Node[] }
 
 // Expressions
 
+export type ScopedExprNode = { type: "NODE_SCOPED_EXPR", expr: Node }
+
 export type AssigNode    = { type: "NODE_ASSIG",     target: Node, val: Node }
 export type AccessNode   = { type: "NODE_ACCESS",    origin: Node, props: Node[]  }
 export type CallNode     = { type: "NODE_CALL",      args: Node[] }
@@ -44,11 +46,11 @@ export type VarImportNode = { type: "NODE_IMPORT_VARS", path: IdToken[], ids: Id
 export type ModuleNode    = { type: "NODE_MODULE", stmts: Node[] }
 
 export type Node =
-    | PrimNode         | ListNode        | DictNode   | FuncNode  | PipeNode
-    | CallNode         | PipeCallNode    | AccessNode | UnaryNode | BinaryNode
-    | IfNode           | WhileNode       | ForNode
-    | SingleReturnNode | MultiReturnNode | BreakNode
-    | AssigNode
+    | PrimNode          | ListNode        | DictNode   | FuncNode  | PipeNode
+    | CallNode          | PipeCallNode    | AccessNode | UnaryNode | BinaryNode
+    | IfNode            | WhileNode       | ForNode
+    | SingleReturnNode  | MultiReturnNode | BreakNode
+    | ScopedExprNode    | AssigNode
     | SingleVarDeclNode | MultiVarDeclNode
     | ModImportNode     | VarImportNode    | ModuleNode
 
@@ -215,6 +217,14 @@ function parseFunc(tokenizer: Tokenizer): Node {
 
     tokenizer.next()
 
+    // Direct return
+
+    if (isValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", "->")) {
+        tokenizer.next();
+
+        return { type: "NODE_FUNC", params, stmts: [ { type: "NODE_RETURN_SINGLE", val: parseExpr(tokenizer) } ]}
+    }
+
     // Stmts
 
     const stmts = parseBlock(tokenizer)
@@ -228,6 +238,16 @@ function parsePipe(tokenizer: Tokenizer): Node {
 
     const target = requireType(tokenizer.cur(), "TOKEN_ID")
     tokenizer.next()
+
+    // Direct return
+
+    if (isValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", "->")) {
+        tokenizer.next();
+
+        return { type: "NODE_PIPE", target, stmts: [ { type: "NODE_RETURN_SINGLE", val: parseExpr(tokenizer) } ]}
+    }
+
+    // Stmts
 
     const stmts = parseBlock(tokenizer)
 
@@ -269,7 +289,7 @@ function parseFieldCall(tokenizer: Tokenizer): Node {
 
     if (isType(cur, "TOKEN_STICKY_PAREN_L")) {
         tokenizer.next() // eat sticky (
-        const expr = parseExpr(tokenizer)
+        const expr: Node = { type: "NODE_SCOPED_EXPR", expr: parseExpr(tokenizer) }
 
         requireValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", ")")
         tokenizer.next()
@@ -308,7 +328,7 @@ function parsePrimary(tokenizer: Tokenizer): Node {
 
     if (isValueOfType(cur, "TOKEN_SYMBOL", "(")) {
         tokenizer.next() // eat non sticky (
-        const expr = parseExpr(tokenizer)
+        const expr: Node = { type: "NODE_SCOPED_EXPR", expr: parseExpr(tokenizer) }
 
         const cur = tokenizer.cur()
 

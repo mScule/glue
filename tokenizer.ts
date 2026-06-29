@@ -187,7 +187,6 @@ function buildSymbolToken(scanner: Scanner): Token {
     case "/":
     case "%":
     case "+":
-    case "-":
     case ".":
     case "|":
       val = scanner.cur()!;
@@ -196,17 +195,27 @@ function buildSymbolToken(scanner: Scanner): Token {
 
     case "(":
       {
-        const peak = scanner.peak(-1) ?? "";
+        const left = scanner.peak(-1) ?? "";
 
         if (
-          isLetter(peak) || isDigit(peak) || peak === '"' || peak === ")" ||
-          peak === "}" || peak === "."
+          isLetter(left) || isDigit(left) || left === '"' || left === ")" ||
+          left === "}" || left === "."
         ) {
           scanner.next();
           return { type: "TOKEN_STICKY_PAREN_L", loc: scanner.loc() };
         }
 
         val = scanner.cur()!;
+        scanner.next();
+      }
+      break;
+
+    case "-":
+      val += scanner.cur();
+      scanner.next();
+
+      if (scanner.cur() === ">") {
+        val += scanner.cur();
         scanner.next();
       }
       break;

@@ -23,29 +23,18 @@ export const compile: Compiler<string> = function (ast) {
         case "NODE_DICT":
             return [
                 "{",
-                ast.vals.map(({ key, val }) => {
-                    const compiledKey = (() => {
-                        switch(key.type) {
-                            case "TOKEN_NUMBER":
-                            case "TOKEN_STRING":
-                                return "[\"" + key.val + "\"]"
-                            case "TOKEN_ID":
-                                return key.val
-                        }
-                    })()
-                    return compiledKey + ":" + compile(val)
-                }).join(","),
+                ast.vals.map(({ key, val }) => "[\"" + key.val + "\"]" + ":" + compile(val)).join(","),
                 "}"
             ].join("")
         case "NODE_FUNC":
             return [
-                "function", "(", ast.params.map(param => param.val), ")", "{",
+                "(","(", ast.params.map(param => param.val), ")", "=>", "{",
                 ast.stmts.map(stmt => compile(stmt)).join(";"),
-                "}"
+                "}",")"
             ].join("")
         case "NODE_PIPE":
             return [
-                "(", "function", "(", ast.target.val, ")", "{",
+                "(","(", ast.target.val, ")", "=>", "{",
                 ast.stmts.map(stmt => compile(stmt)).join(";"),
                 "}", ")"
             ].join("")
@@ -58,22 +47,23 @@ export const compile: Compiler<string> = function (ast) {
         case "NODE_PIPE_CALL":
             return [...ast.pipes.reverse(), ast.target].map(n => compile(n)).reverse().reduce((prev, cur) => `${cur}(${prev})`)
         case "NODE_ACCESS": {
-            const first = ast.props.slice(0, ast.props.length - 1)
+            const prop = (prop: Node) =>
+                prop.type === "NODE_PRIM" && prop.val.type === "TOKEN_ID"
+                    ? "\"" + prop.val.val + "\""
+                    : compile(prop)
+    
+            const middle = ast.props.slice(0, ast.props.length - 1)
             const last = ast.props[ast.props.length - 1]
-
-            if (first.length === 0) {
-                return [
-                    compile(ast.origin),
-                    "[", compile(last), "]"
-                ].join("")
-            }
 
             return [
                 compile(ast.origin),
-                first.map(p => "[" + compile(p) + "]").join(""),
-                compile(last)
+                middle.map(p => "[" + prop(p) + "]").join(""),
+                last.type === "NODE_CALL"
+                    ? prop(last)
+                    : "[" + prop(last) + "]"
             ].join("")
         }
+
         case "NODE_UNARY":
             return [
                 ast.opr.val,
@@ -96,7 +86,7 @@ export const compile: Compiler<string> = function (ast) {
                 "if", "(", compile(ast.cond), ")", "{",
                 ast.stmts.map(stmt => compile(stmt)).join(";"),
                 "}"
-            ].join(" ")
+            ].join("")
         case "NODE_WHILE":
             return [
                 "while", "(", compile(ast.cond), ")", "{",
@@ -105,7 +95,7 @@ export const compile: Compiler<string> = function (ast) {
             ].join(" ")
         case "NODE_FOR":
             return [
-                "for", "(", "let", ast.item.val, "of", compile(ast.iter), ")", "{",
+                "for", "(", ["let", ast.item.val, "of", compile(ast.iter)].join(" "), ")", "{",
                 ast.stmts.map(stmt => compile(stmt)).join(";"),
                 "}"
             ].join("")
@@ -145,5 +135,7 @@ export const compile: Compiler<string> = function (ast) {
             ].join(" ")
         case "NODE_MODULE":
             return ast.stmts.map(stmt => compile(stmt)).join(";")
+        case "NODE_SCOPED_EXPR":
+            return "(" + compile(ast.expr) + ")"
     }
 }
