@@ -58,27 +58,24 @@ stmt =
 
 ## Example
 
-You can run an example program with `deno run ./main.ts -f ./examples/bouncer.glue`
-
-Example output if evaluated:
 ```
-Baby has to wait for 18
-Mike has to wait for 3
-Jack is old enough. Welcome!
-Bill is old enough. Welcome!
-Granpa is old enough. Welcome!
-```
+var last  = pipe cur -> cur.(cur.length - 1)
 
-- Example input file can be found [./examples/bouncer.glue](./examples/bouncer.glue)
-- Example output file can be found in [./examples/bouncer.js](./examples/bouncer.js)
-
-```
-def human = type () dict {
-     name = string
-     age  = 10
+var human = func (name age) -> dict {
+     name = name or ""
+     age  = age  or 0
 }
 
-var h human = dict {
-     
+var add_years = func (amt) -> pipe human {
+     human.age = human.age + amt
 }
+
+var humans = list {
+     human("Peter" 58)
+     human("Lois" 43)
+     human("Stewie" 1)
+     human("Brian" 10)
+}
+
+humans | last | add_years(300)
 ```
