@@ -3,21 +3,20 @@ import { Tokenizer, BoolToken, IdToken, NullToken, NumberToken, StringToken, Sym
 
 // Literals
 
-export type PrimNode = { type: "NODE_PRIM", val: NullToken | BoolToken | NumberToken | StringToken | IdToken }
-export type ListNode = { type: "NODE_LIST", vals: Node[] }
-export type DictNode = { type: "NODE_DICT", vals: { key: NumberToken | StringToken | IdToken, val: Node }[] }
+export type PrimLitNode = { type: "NODE_LIT_PRIM", val: NullToken | BoolToken | NumberToken | StringToken | IdToken }
+export type ListLitNode = { type: "NODE_LIT_LIST", vals: Node[] }
+export type DictLitNode = { type: "NODE_LIT_DICT", vals: { key: NumberToken | StringToken | IdToken, val: Node }[] }
 
-export type FuncNode = { type: "NODE_FUNC", params: IdToken[], stmts: Node[] }
-export type PipeNode = { type: "NODE_PIPE", target: IdToken,   stmts: Node[] }
+export type FuncLitNode = { type: "NODE_LIT_FUNC", params: IdToken[], stmts: Node[] }
+export type PipeLitNode = { type: "NODE_LIT_PIPE", target: IdToken,   stmts: Node[] }
 
 // Expressions
 
 export type ScopedExprNode = { type: "NODE_SCOPED_EXPR", expr: Node }
 
-export type AssigNode    = { type: "NODE_ASSIG",     target: Node, val: Node }
-export type AccessNode   = { type: "NODE_ACCESS",    origin: Node, props: Node[]  }
-export type CallNode     = { type: "NODE_CALL",      args: Node[] }
-export type PipeCallNode = { type: "NODE_PIPE_CALL", target: Node, pipes: Node[] }
+export type AssigNode    = { type: "NODE_ASSIG",  target: Node, val: Node }
+export type MemberNode   = { type: "NODE_MEMBER", origin: Node, members: (FuncCall | FieldCall)[]  }
+export type PipeNode     = { type: "NODE_PIPE",   target: Node, pipes: Node[] }
 
 export type UnaryNode    = { type: "NODE_UNARY",  opr: SymbolToken, expr: Node }
 export type BinaryNode   = { type: "NODE_BINARY", opr: SymbolToken | KeywordToken, left: Node, right: Node }
@@ -46,13 +45,18 @@ export type VarImportNode = { type: "NODE_IMPORT_VARS", path: IdToken[], ids: Id
 export type ModuleNode    = { type: "NODE_MODULE", stmts: Node[] }
 
 export type Node =
-    | PrimNode          | ListNode        | DictNode   | FuncNode  | PipeNode
-    | CallNode          | PipeCallNode    | AccessNode | UnaryNode | BinaryNode
-    | IfNode            | WhileNode       | ForNode
-    | SingleReturnNode  | MultiReturnNode | BreakNode
+    | PrimLitNode       | ListLitNode      | DictLitNode | FuncLitNode | PipeLitNode
+    | MemberNode        | PipeNode         | UnaryNode   | BinaryNode
+    | IfNode            | WhileNode        | ForNode
+    | SingleReturnNode  | MultiReturnNode  | BreakNode
     | ScopedExprNode    | AssigNode
     | SingleVarDeclNode | MultiVarDeclNode
     | ModImportNode     | VarImportNode    | ModuleNode
+
+// Internal node types (not direct part of ast)
+
+export type FieldCall = { type: "INTERNAL_FIELD_CALL", arg: Node }
+export type FuncCall = { type: "INTERNAL_FUNC_CALL", args: Node[] }
 
 // Utils
 
@@ -127,7 +131,7 @@ function parseBlock(tokenizer: Tokenizer): Node[] {
     return stmts
 }
 
-function parseList(tokenizer: Tokenizer): Node {
+function parseListLit(tokenizer: Tokenizer): Node {
     const vals: Node[] = []
 
     requireValueOfType(tokenizer.cur(), "TOKEN_KEYWORD", "list")
@@ -145,10 +149,10 @@ function parseList(tokenizer: Tokenizer): Node {
 
     tokenizer.next()
 
-    return { type: "NODE_LIST", vals }
+    return { type: "NODE_LIT_LIST", vals }
 }
 
-function parseDict(tokenizer: Tokenizer): Node {
+function parseDictLit(tokenizer: Tokenizer): Node {
     const vals: { key: NumberToken | StringToken | IdToken, val: Node }[] = []
 
     requireValueOfType(tokenizer.cur(), "TOKEN_KEYWORD", "dict")
@@ -184,10 +188,10 @@ function parseDict(tokenizer: Tokenizer): Node {
 
     tokenizer.next()
 
-    return { type: "NODE_DICT", vals }
+    return { type: "NODE_LIT_DICT", vals }
 }
 
-function parseFunc(tokenizer: Tokenizer): Node {
+function parseFuncLit(tokenizer: Tokenizer): Node {
     const params: IdToken[] = []
 
     let cur = tokenizer.cur()
@@ -222,17 +226,17 @@ function parseFunc(tokenizer: Tokenizer): Node {
     if (isValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", "->")) {
         tokenizer.next();
 
-        return { type: "NODE_FUNC", params, stmts: [ { type: "NODE_RETURN_SINGLE", val: parseExpr(tokenizer) } ]}
+        return { type: "NODE_LIT_FUNC", params, stmts: [ { type: "NODE_RETURN_SINGLE", val: parseExpr(tokenizer) } ]}
     }
 
     // Stmts
 
     const stmts = parseBlock(tokenizer)
 
-    return { type: "NODE_FUNC", params, stmts }
+    return { type: "NODE_LIT_FUNC", params, stmts }
 }
 
-function parsePipe(tokenizer: Tokenizer): Node {
+function parsePipeLit(tokenizer: Tokenizer): Node {
     requireValueOfType(tokenizer.cur(), "TOKEN_KEYWORD", "pipe")
     tokenizer.next()
 
@@ -244,17 +248,17 @@ function parsePipe(tokenizer: Tokenizer): Node {
     if (isValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", "->")) {
         tokenizer.next();
 
-        return { type: "NODE_PIPE", target, stmts: [ { type: "NODE_RETURN_SINGLE", val: parseExpr(tokenizer) } ]}
+        return { type: "NODE_LIT_PIPE", target, stmts: [ { type: "NODE_RETURN_SINGLE", val: parseExpr(tokenizer) } ]}
     }
 
     // Stmts
 
     const stmts = parseBlock(tokenizer)
 
-    return { type: "NODE_PIPE", target, stmts }
+    return { type: "NODE_LIT_PIPE", target, stmts }
 }
 
-function parseFuncCall(tokenizer: Tokenizer): Node {
+function parseFuncCall(tokenizer: Tokenizer): FuncCall {
     tokenizer.next() // eat "sticky" (
 
     const args: Node[] = []
@@ -268,10 +272,10 @@ function parseFuncCall(tokenizer: Tokenizer): Node {
 
     tokenizer.next()
 
-    return { type: "NODE_CALL", args }
+    return { type: "INTERNAL_FUNC_CALL", args }
 }
 
-function parseFieldCall(tokenizer: Tokenizer): Node {
+function parseFieldCall(tokenizer: Tokenizer): FieldCall {
     tokenizer.next() // eat "."
 
     const cur = tokenizer.cur()
@@ -282,7 +286,7 @@ function parseFieldCall(tokenizer: Tokenizer): Node {
 
     if (primitive) {
         tokenizer.next()
-        return { type: "NODE_PRIM", val: primitive }
+        return { type: "INTERNAL_FIELD_CALL", arg: { type: "NODE_LIT_PRIM", val: primitive } }
     }
 
     // Expression
@@ -294,7 +298,7 @@ function parseFieldCall(tokenizer: Tokenizer): Node {
         requireValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", ")")
         tokenizer.next()
 
-        return expr
+        return { type: "INTERNAL_FIELD_CALL", arg: expr }
     }
 
     throw createError("Field accessor has to be either number, string, id or expression wrapped in sticky opening parenthese and closing parenthese", tokenizer.cur().loc)
@@ -307,23 +311,23 @@ function parsePrimary(tokenizer: Tokenizer): Node {
 
     if (primitive) {
         tokenizer.next()
-        return { type: "NODE_PRIM", val: primitive }
+        return { type: "NODE_LIT_PRIM", val: primitive }
     }
 
     if (isValueOfType(cur, "TOKEN_KEYWORD", "list")) {
-        return parseList(tokenizer)
+        return parseListLit(tokenizer)
     }
 
     if (isValueOfType(cur, "TOKEN_KEYWORD", "dict")) {
-        return parseDict(tokenizer)
+        return parseDictLit(tokenizer)
     }
 
     if (isValueOfType(cur, "TOKEN_KEYWORD", "func")) {
-        return parseFunc(tokenizer)
+        return parseFuncLit(tokenizer)
     }
 
     if (isValueOfType(cur, "TOKEN_KEYWORD", "pipe")) {
-        return parsePipe(tokenizer)
+        return parsePipeLit(tokenizer)
     }
 
     if (isValueOfType(cur, "TOKEN_SYMBOL", "(")) {
@@ -344,17 +348,17 @@ function parsePrimary(tokenizer: Tokenizer): Node {
     throw createError("Primary has to be either null, bool, number, string, id, list, dict, func, or expression wrapped in non sticky opening parenthese and closing parenthese got " + stringifyToken(cur), tokenizer.cur().loc)
 }
 
-function parseCall(tokenizer: Tokenizer): Node {
+function parseMembers(tokenizer: Tokenizer): Node {
     const origin = parsePrimary(tokenizer)
-    const props: Node[] = []
+    const members: (FuncCall | FieldCall)[] = []
 
     let cur = tokenizer.cur()
 
     while (true) {
         if (isType(cur, "TOKEN_STICKY_PAREN_L")) {
-            props.push(parseFuncCall(tokenizer))
+            members.push(parseFuncCall(tokenizer))
         } else if (isValueOfType(cur, "TOKEN_SYMBOL", ".")) {
-            props.push(parseFieldCall(tokenizer))
+            members.push(parseFieldCall(tokenizer))
         } else {
             break;
         }
@@ -362,15 +366,15 @@ function parseCall(tokenizer: Tokenizer): Node {
         cur = tokenizer.cur()
     }
 
-    if (props.length === 0) {
+    if (members.length === 0) {
         return origin
     }
 
-    return { type: "NODE_ACCESS", origin, props }
+    return { type: "NODE_MEMBER", origin, members }
 }
 
 function parsePipeCall(tokenizer: Tokenizer): Node {
-    const target = parseCall(tokenizer);
+    const target = parseMembers(tokenizer);
 
     if (!isValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", "|")) {
         return target;
@@ -380,10 +384,10 @@ function parsePipeCall(tokenizer: Tokenizer): Node {
 
     while (isValueOfType(tokenizer.cur(), "TOKEN_SYMBOL", "|")) {
         tokenizer.next();
-        pipes.push(parseCall(tokenizer))
+        pipes.push(parseMembers(tokenizer))
     }
 
-    return { type: "NODE_PIPE_CALL", target, pipes }
+    return { type: "NODE_PIPE", target, pipes }
 }
 
 function parseUnary(tokenizer: Tokenizer): Node {
