@@ -1,6 +1,6 @@
+import { createContext, evaluate } from "./interpreter.ts";
 import { parse } from "./parser.ts";
 import { scan } from "./scanner.ts";
-import { compile } from "./to-js.ts";
 import { tokenize } from "./tokenizer.ts";
 
 import { join, relative } from "@std/path";
@@ -52,24 +52,15 @@ async function processEntry(
     const inputPath = fullPath;
 
     const relativePath = relative(sourceRoot, inputPath);
-    // const outputPath = join(buildRoot, relativePath + ".js");
 
     try {
       const source = await Deno.readTextFile(inputPath);
-
       const chars = scan(source);
       const tokens = tokenize(chars);
       const ast = parse(tokens);
-      const result = compile(ast)
 
-      console.log(result)
+      evaluate(ast)
 
-      eval(result)
-
-      // await ensureDir(dirname(outputPath));
-      // await Deno.writeTextFile(outputPath, js);
-
-      console.log("Built:", relativePath);
     } catch (err) {
       console.error("Failed to build:", relativePath);
       console.error(err);

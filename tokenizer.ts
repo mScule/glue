@@ -43,11 +43,17 @@ function buildNumberToken(scanner: Scanner): Token {
   let val = "";
   let current = scanner.cur();
 
+  const isFieldCall = scanner.peak(-1) === "."
+
   while (current && isDigit(current)) {
     val += current;
 
     scanner.next();
     current = scanner.cur();
+
+    if (isFieldCall && current === ".") {
+      return { type: "TOKEN_NUMBER", val, loc: scanner.loc() };
+    }
 
     if (current === ".") {
       val += current;
